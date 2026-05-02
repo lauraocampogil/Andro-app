@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
+import { useAuth } from "@/lib/auth";
 import { useRouter } from "expo-router";
 import React from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
@@ -13,6 +14,12 @@ const PERMS = [
 
 export default function Permissions() {
 	const router = useRouter();
+	const { completeOnboarding } = useAuth();
+
+	const handleEnter = async () => {
+		await completeOnboarding();
+		router.replace("/(tabs)/home" as any);
+	};
 	return (
 		<CosmicBackground>
 			<SafeAreaView style={{ flex: 1 }}>
@@ -39,7 +46,7 @@ export default function Permissions() {
 						))}
 					</View>
 					<View style={{ flex: 1 }} />
-					<Button label="Enter Andro" onPress={() => router.replace("/(tabs)/home")} />
+					<Button label="Enter Andro" onPress={handleEnter} />
 					<Text onPress={() => router.back()} style={styles.link}>
 						Back
 					</Text>
