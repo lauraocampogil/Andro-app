@@ -1,8 +1,10 @@
+import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Spacing } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React from "react";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Welcome() {
 	const router = useRouter();
@@ -15,15 +17,15 @@ export default function Welcome() {
 						<View style={styles.dot} />
 						<View style={styles.dot} />
 					</View>
-					<View style={{ marginVertical: 28 }}></View>
 					<Text style={styles.wordmark}>Andro</Text>
 					<Text style={styles.slogan}>Run the world.</Text>
 					<Text style={[styles.slogan, { color: Colors.violetLight }]}>With Andro.</Text>
 					<Text style={styles.sub}>Color the world, one finish line at a time.</Text>
 					<View style={{ flex: 1 }} />
-					{/* <Button label="Get started" onPress={() => router.push("/(auth)/concept")} /> */}
-					{/* <Text onPress={() => router.push("/(auth)/sign-in")} style={styles.link}> */}I already have an account
-					{/* </Text> */}
+					<Button label="Get started" onPress={() => router.push("/(auth)/sign-up" as any)} />
+					<Text onPress={() => router.push("/(auth)/sign-in" as any)} style={styles.link}>
+						I already have an account
+					</Text>
 				</View>
 			</SafeAreaView>
 		</CosmicBackground>
