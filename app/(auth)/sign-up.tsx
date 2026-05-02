@@ -33,8 +33,8 @@ export default function SignUp() {
 						<Text style={styles.title}>Create account</Text>
 						<Text style={styles.sub}>Welcome to Andro. Let's get you exploring.</Text>
 						<View style={{ marginTop: 32 }}>
-							<Input label="Display name" value={name} onChangeText={setName} placeholder="Laura" autoCapitalize="words" />
-							<Input label="Email" value={email} onChangeText={setEmail} placeholder="laura@example.com" autoCapitalize="none" keyboardType="email-address" />
+							<Input label="Display name" value={name} onChangeText={setName} placeholder="Jean" autoCapitalize="words" />
+							<Input label="Email" value={email} onChangeText={setEmail} placeholder="jean@example.com" autoCapitalize="none" keyboardType="email-address" />
 							<Input label="Password" value={password} onChangeText={setPassword} placeholder="Min 6 characters" secureTextEntry error={error || undefined} />
 						</View>
 						<View style={{ marginTop: 16 }}>

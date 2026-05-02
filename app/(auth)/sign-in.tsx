@@ -31,7 +31,7 @@ export default function SignIn() {
 						<Text style={styles.title}>Welcome back</Text>
 						<Text style={styles.sub}>Andro missed you.</Text>
 						<View style={{ marginTop: 32 }}>
-							<Input label="Email" value={email} onChangeText={setEmail} placeholder="laura@example.com" autoCapitalize="none" keyboardType="email-address" />
+							<Input label="Email" value={email} onChangeText={setEmail} placeholder="jean@example.com" autoCapitalize="none" keyboardType="email-address" />
 							<Input label="Password" value={password} onChangeText={setPassword} placeholder="Your password" secureTextEntry error={error || undefined} />
 						</View>
 						<View style={{ marginTop: 16 }}>
