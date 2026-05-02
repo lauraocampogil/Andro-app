@@ -26,11 +26,6 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		width: "100%",
-		shadowColor: Colors.secundaire,
-		shadowOffset: { width: 0, height: 12 },
-		shadowOpacity: 0.5,
-		shadowRadius: 32,
-		elevation: 12,
 	},
 	label: {
 		fontFamily: Fonts.bodyBold,
