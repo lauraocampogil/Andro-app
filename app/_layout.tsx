@@ -14,17 +14,14 @@ export default function RootLayout() {
 
 	useEffect(() => {
 		if (!initialized) return;
-		const inAuth = (segments[0] as string) === "(auth)";
 		const inTabs = (segments[0] as string) === "(tabs)";
+		const onWelcome = (segments[0] as string) === "(auth)" && (segments[1] as string) === "welcome";
 
 		if (!session && inTabs) {
-			// Pas loggé, mais essaie d'accéder à home → kick vers welcome
 			router.replace("/(auth)/welcome" as any);
-		} else if (session && onboardingCompleted && inAuth) {
-			// Déjà loggé + onboarding fait → direct home
+		} else if (session && onboardingCompleted && onWelcome) {
 			router.replace("/(tabs)/home" as any);
 		}
-		// Sinon : laisse passer (onboarding en cours pour un nouveau user)
 	}, [initialized, session, onboardingCompleted, segments]);
 
 	if (!initialized) return null;
