@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { GradientText } from "@/components/GradientText";
 import { Colors, Fonts, FontSizes, Spacing } from "@/constants/theme";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -15,7 +16,7 @@ export default function Welcome() {
 				<View style={styles.container}>
 					<Image source={require("@/assets/animations/welcome_animation.gif")} style={styles.animation} contentFit="contain" />
 
-					<Text style={styles.wordmark}>Andro</Text>
+					<GradientText style={styles.wordmark}>Andro</GradientText>
 					<Text style={styles.slogan}>Run the world.</Text>
 					<Text style={[styles.slogan, { color: Colors.violetLight }]}>With Andro.</Text>
 
@@ -35,6 +36,5 @@ const styles = StyleSheet.create({
 	animation: { width: 350, height: 350, marginBottom: 4 },
 	wordmark: { fontFamily: Fonts.display, fontSize: FontSizes.hero, color: Colors.violetLight, fontStyle: "italic", marginBottom: 16 },
 	slogan: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.h2, fontWeight: "800", color: Colors.white, textAlign: "center" },
-	sub: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: Colors.white70, textAlign: "center", marginTop: 14, maxWidth: 280 },
 	link: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: Colors.violetLight, marginTop: 16, textAlign: "center" },
 });
