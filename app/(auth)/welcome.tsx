@@ -33,7 +33,7 @@ export default function Welcome() {
 const styles = StyleSheet.create({
 	container: { flex: 1, paddingHorizontal: Spacing.lg, paddingVertical: 40, alignItems: "center" },
 	animation: { width: 350, height: 350, marginBottom: 4 },
-	wordmark: { fontFamily: Fonts.display, fontSize: FontSizes.hero, color: Colors.white, fontStyle: "italic", marginBottom: 16 },
+	wordmark: { fontFamily: Fonts.display, fontSize: FontSizes.hero, color: Colors.violetLight, fontStyle: "italic", marginBottom: 16 },
 	slogan: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.h2, fontWeight: "800", color: Colors.white, textAlign: "center" },
 	sub: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: Colors.white70, textAlign: "center", marginTop: 14, maxWidth: 280 },
 	link: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: Colors.violetLight, marginTop: 16, textAlign: "center" },

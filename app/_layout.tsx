@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -7,6 +8,13 @@ export default function RootLayout() {
 	const { initialized, session, onboardingCompleted, init } = useAuth();
 	const router = useRouter();
 	const segments = useSegments();
+
+	const [fontsLoaded] = useFonts({
+		Tanker: require("@/assets/fonts/Tanker-Regular.ttf"),
+		Fustat: require("@/assets/fonts/Fustat-Regular.ttf"),
+		"Fustat-SemiBold": require("@/assets/fonts/Fustat-SemiBold.ttf"),
+		"Fustat-Bold": require("@/assets/fonts/Fustat-Bold.ttf"),
+	});
 
 	useEffect(() => {
 		init();
@@ -24,7 +32,7 @@ export default function RootLayout() {
 		}
 	}, [initialized, session, onboardingCompleted, segments]);
 
-	if (!initialized) return null;
+	if (!initialized || !fontsLoaded) return null;
 
 	return (
 		<>

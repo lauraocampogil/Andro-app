@@ -32,8 +32,9 @@ export const Colors = {
 
 export const Fonts = {
 	display: "Tanker",
-	body: "LeagueSpartan",
-	bodyBold: "LeagueSpartanBold",
+	body: "Fustat",
+	bodyBold: "Fustat-Bold",
+	bodySemi: "Fustat-SemiBold",
 } as const;
 
 export const FontSizes = {
