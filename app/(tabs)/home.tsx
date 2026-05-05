@@ -9,7 +9,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 
-// Mock data — remplacer par Supabase fetch en MVP2
+// Mock data
 const stats = {
 	countries: 12,
 	continents: 3,
