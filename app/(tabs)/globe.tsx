@@ -1,15 +1,20 @@
 import { Globe3D } from "@/components/Globe3D/Globe3D";
+import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 export default function GlobeFullScreen() {
 	const router = useRouter();
 
 	return (
 		<View style={styles.container}>
-			{/* Fullscreen globe (slower rotation, more cinematic) */}
-			<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0.05} />
+			<Pressable style={styles.backButton} onPress={() => router.back()}>
+				<ArrowLeft size={24} color={Colors.white} strokeWidth={2.5} />
+			</Pressable>
+
+			<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0} interactive={true} cameraDistance={3.5} />
 		</View>
 	);
 }

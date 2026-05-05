@@ -8,12 +8,13 @@ import * as THREE from "three";
 const GLOBE_RADIUS = 0.8;
 const COLOR_DEFAULT = "#3D3D5C";
 const COLOR_COMPLETED = "#5B58EB";
-const COLOR_OCEAN = "#0A1340";
+const COLOR_OCEAN = "#262a3d";
 
 type Props = {
 	completedCountries?: string[];
 	rotationSpeed?: number;
 	interactive?: boolean;
+	cameraDistance?: number;
 	style?: ViewStyle;
 };
 
@@ -62,7 +63,7 @@ function Globe({ completedCountries, rotationSpeed, manualRotation, interactive 
 	);
 }
 
-export function Globe3D({ completedCountries = [], rotationSpeed = 0.1, interactive = false, style }: Props) {
+export function Globe3D({ completedCountries = [], rotationSpeed = 0.1, interactive = false, cameraDistance = 2.5, style }: Props) {
 	// Manual rotation state (updated by gestures)
 	const manualRotation = useRef({ x: 0, y: 0 });
 	const lastPan = useRef({ x: 0, y: 0 });
@@ -93,7 +94,7 @@ export function Globe3D({ completedCountries = [], rotationSpeed = 0.1, interact
 
 	return (
 		<View style={[styles.container, style]} {...(interactive ? panResponder.panHandlers : {})}>
-			<Canvas camera={{ position: [0, 0, 2.5], fov: 45 }}>
+			<Canvas camera={{ position: [0, 0, cameraDistance], fov: 45 }}>
 				<ambientLight intensity={0.4} />
 				<directionalLight position={[5, 3, 5]} intensity={1.2} color="#FFFFFF" />
 				<pointLight position={[-3, 2, -3]} intensity={0.6} color="#8A87FF" />
