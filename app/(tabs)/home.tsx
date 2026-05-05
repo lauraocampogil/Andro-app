@@ -87,6 +87,9 @@ export default function Home() {
 							<Text style={styles.statName}>WORLD</Text>
 						</View>
 					</View>
+					<Pressable onPress={() => router.push("/globe" as any)} style={{ backgroundColor: "#5B58EB", padding: 12, borderRadius: 12, margin: 16 }}>
+						<Text style={{ color: "white", textAlign: "center" }}>🧪 Test 3D</Text>
+					</Pressable>
 				</ScrollView>
 			</SafeAreaView>
 		</CosmicBackground>
