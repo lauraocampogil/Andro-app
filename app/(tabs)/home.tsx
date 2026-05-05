@@ -1,13 +1,13 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { Globe3D } from "@/components/Globe3D/Globe3D";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { MapPin, Menu, User } from "lucide-react-native";
+import { Maximize2, Menu, User } from "lucide-react-native";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, Path } from "react-native-svg";
 
 // Mock data
 const stats = {
@@ -29,68 +29,46 @@ export default function Home() {
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-				<ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
-					{/* Header */}
-					<View style={styles.header}>
-						<Pressable style={styles.headerBtn} onPress={resetAll}>
-							<User size={20} color={Colors.ink} strokeWidth={2} />
-						</Pressable>
-						<Pressable style={[styles.headerBtn, { backgroundColor: Colors.secundaire }]}>
-							<Menu size={20} color={Colors.white} strokeWidth={2} />
-						</Pressable>
-					</View>
-
-					{/* Globe placeholder (remplace par GIF CapCut quand prêt) */}
-					<View style={styles.globeWrap}>
-						<View style={styles.globeGlow} />
-						<Svg width={280} height={280} viewBox="0 0 280 280">
-							<Circle cx="140" cy="140" r="130" stroke={Colors.deepNight} strokeWidth={6} fill="rgba(91,88,235,0.4)" />
-							<Path d="M 70 100 Q 95 75 125 90 L 130 130 L 110 145 L 90 130 Z" fill={Colors.deepNight} />
-							<Path d="M 145 80 Q 175 75 195 105 L 200 130 L 175 140 L 155 125 Z" fill={Colors.deepNight} />
-							<Path d="M 95 150 Q 125 145 140 175 L 135 210 L 110 215 L 90 195 Z" fill={Colors.deepNight} />
-							<Path d="M 165 165 Q 195 155 210 180 L 200 210 L 175 215 L 165 195 Z" fill={Colors.deepNight} />
-						</Svg>
-
-						{/* Pins */}
-						<View style={[styles.pin, { top: 90, left: 95 }]}>
-							<MapPin size={16} color={Colors.white} fill={Colors.white} />
-						</View>
-						<View style={[styles.pin, { top: 130, left: 115 }]}>
-							<MapPin size={16} color={Colors.white} fill={Colors.white} />
-						</View>
-						<View style={[styles.pin, { top: 110, left: 215 }]}>
-							<MapPin size={16} color={Colors.white} fill={Colors.white} />
-						</View>
-						<View style={[styles.pin, { top: 195, left: 145 }]}>
-							<MapPin size={16} color={Colors.white} fill={Colors.white} />
-						</View>
-					</View>
-
-					{/* Stats card */}
-					<View style={styles.statsCard}>
-						<View style={styles.statCell}>
-							<Text style={styles.statNum}>{stats.countries}</Text>
-							<Text style={styles.statName}>COUNTRIES</Text>
-						</View>
-						<View style={[styles.statCell, styles.statCellMid]}>
-							<Text style={styles.statNum}>
-								{stats.continents}
-								<Text style={styles.statFrac}>/7</Text>
-							</Text>
-							<Text style={styles.statName}>CONTINENTS</Text>
-						</View>
-						<View style={styles.statCell}>
-							<Text style={styles.statNum}>
-								{stats.worldPercent}
-								<Text style={styles.statUnit}>%</Text>
-							</Text>
-							<Text style={styles.statName}>WORLD</Text>
-						</View>
-					</View>
-					<Pressable onPress={() => router.push("/globe" as any)} style={{ backgroundColor: "#5B58EB", padding: 12, borderRadius: 12, margin: 16 }}>
-						<Text style={{ color: "white", textAlign: "center" }}>🧪 Test 3D</Text>
+				{/* Header */}
+				<View style={styles.header}>
+					<Pressable style={styles.headerBtn} onPress={resetAll}>
+						<User size={20} color={Colors.ink} strokeWidth={2} />
 					</Pressable>
-				</ScrollView>
+					<Pressable style={[styles.headerBtn, { backgroundColor: Colors.secundaire }]}>
+						<Menu size={20} color={Colors.white} strokeWidth={2} />
+					</Pressable>
+				</View>
+
+				<View style={styles.globeWrapper}>
+					<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0.15} interactive={true} style={styles.globeCanvas} />
+
+					{/* Zoom-in button */}
+					<Pressable style={styles.zoomButton} onPress={() => router.push("/(tabs)/globe" as any)}>
+						<Maximize2 size={18} color={Colors.white} strokeWidth={2.5} />
+					</Pressable>
+				</View>
+
+				{/* Stats card */}
+				<View style={styles.statsCard}>
+					<View style={styles.statCell}>
+						<Text style={styles.statNum}>{stats.countries}</Text>
+						<Text style={styles.statName}>COUNTRIES</Text>
+					</View>
+					<View style={[styles.statCell, styles.statCellMid]}>
+						<Text style={styles.statNum}>
+							{stats.continents}
+							<Text style={styles.statFrac}>/7</Text>
+						</Text>
+						<Text style={styles.statName}>CONTINENTS</Text>
+					</View>
+					<View style={styles.statCell}>
+						<Text style={styles.statNum}>
+							{stats.worldPercent}
+							<Text style={styles.statUnit}>%</Text>
+						</Text>
+						<Text style={styles.statName}>WORLD</Text>
+					</View>
+				</View>
 			</SafeAreaView>
 		</CosmicBackground>
 	);
@@ -182,5 +160,28 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 		color: Colors.ink70,
 		letterSpacing: 1.4,
+	},
+	globeWrapper: {
+		width: "100%",
+		height: 380,
+		alignSelf: "center",
+		marginVertical: Spacing.lg,
+		position: "relative",
+	},
+	globeCanvas: {
+		flex: 1,
+		backgroundColor: "transparent",
+	},
+	zoomButton: {
+		position: "absolute",
+		bottom: 16,
+		right: 16,
+		width: 44,
+		height: 44,
+		borderRadius: 22,
+		backgroundColor: Colors.white30,
+		justifyContent: "center",
+		alignItems: "center",
+		zIndex: 10,
 	},
 });
