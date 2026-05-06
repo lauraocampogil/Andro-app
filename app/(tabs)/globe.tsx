@@ -14,7 +14,7 @@ export default function GlobeFullScreen() {
 				<ArrowLeft size={24} color={Colors.white} strokeWidth={2.5} />
 			</Pressable>
 
-			<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0} interactive={true} cameraDistance={3.5} />
+			<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0} interactive={true} cameraDistance={2.5} />
 		</View>
 	);
 }
