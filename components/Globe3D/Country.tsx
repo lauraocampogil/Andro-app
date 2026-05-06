@@ -9,8 +9,8 @@ type Props = {
 	color: string;
 };
 
-// Maximum angular distance between two adjacent points before we subdivide
-const MAX_SEGMENT_DEG = 3; // degrees
+// Smaller = more triangles
+const MAX_SEGMENT_DEG = 2;
 
 function subdivideRing(ring: number[][]): number[][] {
 	const result: number[][] = [];
@@ -19,6 +19,8 @@ function subdivideRing(ring: number[][]): number[][] {
 		const a = ring[i];
 		const b = ring[(i + 1) % ring.length];
 		if (!a || !b) continue;
+		if (typeof a[0] !== "number" || typeof a[1] !== "number") continue;
+		if (typeof b[0] !== "number" || typeof b[1] !== "number") continue;
 
 		result.push(a);
 
@@ -38,6 +40,74 @@ function subdivideRing(ring: number[][]): number[][] {
 	return result;
 }
 
+function subdivideTrianglesOnSphere(triangles: number[], points2D: number[], radius: number): { vertices: THREE.Vector3[]; indices: number[] } {
+	const verts: THREE.Vector3[] = [];
+	const idx: number[] = [];
+
+	// Convert all 2D points to 3D first
+	for (let i = 0; i < points2D.length; i += 2) {
+		verts.push(latLngToVector3(points2D[i + 1], points2D[i], radius * 1.005));
+	}
+
+	// For each triangle from earcut, check edge lengths in 3D space
+	const MAX_EDGE_3D = radius * 0.05;
+
+	for (let i = 0; i < triangles.length; i += 3) {
+		const a = triangles[i];
+		const b = triangles[i + 1];
+		const c = triangles[i + 2];
+		subdivideTri(verts, idx, a, b, c, MAX_EDGE_3D, radius * 1.005);
+	}
+
+	return { vertices: verts, indices: idx };
+}
+
+function subdivideTri(verts: THREE.Vector3[], idx: number[], ai: number, bi: number, ci: number, maxEdge: number, sphereRadius: number, depth: number = 0) {
+	if (depth > 4) {
+		// Safety limit to avoid infinite recursion
+		idx.push(ai, bi, ci);
+		return;
+	}
+
+	const a = verts[ai];
+	const b = verts[bi];
+	const c = verts[ci];
+
+	const ab = a.distanceTo(b);
+	const bc = b.distanceTo(c);
+	const ca = c.distanceTo(a);
+	const maxLen = Math.max(ab, bc, ca);
+
+	if (maxLen <= maxEdge) {
+		idx.push(ai, bi, ci);
+		return;
+	}
+
+	// Find longest edge and subdivide on it
+	if (ab >= bc && ab >= ca) {
+		// Subdivide AB
+		const mid = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(sphereRadius);
+		const mi = verts.length;
+		verts.push(mid);
+		subdivideTri(verts, idx, ai, mi, ci, maxEdge, sphereRadius, depth + 1);
+		subdivideTri(verts, idx, mi, bi, ci, maxEdge, sphereRadius, depth + 1);
+	} else if (bc >= ab && bc >= ca) {
+		// Subdivide BC
+		const mid = b.clone().add(c).multiplyScalar(0.5).normalize().multiplyScalar(sphereRadius);
+		const mi = verts.length;
+		verts.push(mid);
+		subdivideTri(verts, idx, ai, bi, mi, maxEdge, sphereRadius, depth + 1);
+		subdivideTri(verts, idx, ai, mi, ci, maxEdge, sphereRadius, depth + 1);
+	} else {
+		// Subdivide CA
+		const mid = c.clone().add(a).multiplyScalar(0.5).normalize().multiplyScalar(sphereRadius);
+		const mi = verts.length;
+		verts.push(mid);
+		subdivideTri(verts, idx, ai, bi, mi, maxEdge, sphereRadius, depth + 1);
+		subdivideTri(verts, idx, mi, bi, ci, maxEdge, sphereRadius, depth + 1);
+	}
+}
+
 export function Country({ polygons, radius, color }: Props) {
 	const geometry = useMemo(() => {
 		const geom = new THREE.BufferGeometry();
@@ -49,10 +119,8 @@ export function Country({ polygons, radius, color }: Props) {
 			const rawRing = polygon[0];
 			if (!rawRing || rawRing.length < 3) return;
 
-			// Subdivide long edges so they curve nicely on the sphere
 			const ring = subdivideRing(rawRing);
 
-			// Flatten to [x1, y1, x2, y2, ...] for earcut
 			const flat2D: number[] = [];
 			ring.forEach((point) => {
 				const lng = point[0];
@@ -64,27 +132,21 @@ export function Country({ polygons, radius, color }: Props) {
 
 			if (flat2D.length < 6) return;
 
-			// Triangulate the 2D polygon
 			const triangles = earcut(flat2D);
 			if (triangles.length === 0) return;
 
-			// Project each 2D point onto the sphere
-			const points3D: THREE.Vector3[] = [];
-			for (let i = 0; i < flat2D.length; i += 2) {
-				const lng = flat2D[i];
-				const lat = flat2D[i + 1];
-				points3D.push(latLngToVector3(lat, lng, radius * 1.005));
-			}
+			// Subdivide triangles in 3D space, projecting on sphere
+			const { vertices: verts3D, indices: triIndices } = subdivideTrianglesOnSphere(triangles, flat2D, radius);
 
-			points3D.forEach((p) => {
+			verts3D.forEach((p) => {
 				allVertices.push(p.x, p.y, p.z);
 			});
 
-			triangles.forEach((idx) => {
-				allIndices.push(idx + vertexOffset);
+			triIndices.forEach((i) => {
+				allIndices.push(i + vertexOffset);
 			});
 
-			vertexOffset += points3D.length;
+			vertexOffset += verts3D.length;
 		});
 
 		if (allVertices.length === 0) return null;
