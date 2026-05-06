@@ -9,6 +9,35 @@ type Props = {
 	color: string;
 };
 
+// Maximum angular distance between two adjacent points before we subdivide
+const MAX_SEGMENT_DEG = 3; // degrees
+
+function subdivideRing(ring: number[][]): number[][] {
+	const result: number[][] = [];
+
+	for (let i = 0; i < ring.length; i++) {
+		const a = ring[i];
+		const b = ring[(i + 1) % ring.length];
+		if (!a || !b) continue;
+
+		result.push(a);
+
+		const lngDiff = Math.abs(b[0] - a[0]);
+		const latDiff = Math.abs(b[1] - a[1]);
+		const maxDiff = Math.max(lngDiff, latDiff);
+
+		if (maxDiff > MAX_SEGMENT_DEG) {
+			const steps = Math.ceil(maxDiff / MAX_SEGMENT_DEG);
+			for (let s = 1; s < steps; s++) {
+				const t = s / steps;
+				result.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+			}
+		}
+	}
+
+	return result;
+}
+
 export function Country({ polygons, radius, color }: Props) {
 	const geometry = useMemo(() => {
 		const geom = new THREE.BufferGeometry();
@@ -17,10 +46,13 @@ export function Country({ polygons, radius, color }: Props) {
 		let vertexOffset = 0;
 
 		polygons.forEach((polygon) => {
-			const ring = polygon[0];
-			if (!ring || ring.length < 3) return;
+			const rawRing = polygon[0];
+			if (!rawRing || rawRing.length < 3) return;
 
-			// Flatten the 2D polygon coords for earcut [x1, y1, x2, y2, ...]
+			// Subdivide long edges so they curve nicely on the sphere
+			const ring = subdivideRing(rawRing);
+
+			// Flatten to [x1, y1, x2, y2, ...] for earcut
 			const flat2D: number[] = [];
 			ring.forEach((point) => {
 				const lng = point[0];
@@ -30,12 +62,13 @@ export function Country({ polygons, radius, color }: Props) {
 				}
 			});
 
-			if (flat2D.length < 6) return; // need at least 3 points
+			if (flat2D.length < 6) return;
 
-			// Earcut returns triangle indices for 2D polygon
+			// Triangulate the 2D polygon
 			const triangles = earcut(flat2D);
+			if (triangles.length === 0) return;
 
-			// Convert each 2D point to 3D on the sphere
+			// Project each 2D point onto the sphere
 			const points3D: THREE.Vector3[] = [];
 			for (let i = 0; i < flat2D.length; i += 2) {
 				const lng = flat2D[i];
@@ -43,12 +76,10 @@ export function Country({ polygons, radius, color }: Props) {
 				points3D.push(latLngToVector3(lat, lng, radius * 1.005));
 			}
 
-			// Push 3D vertices to global vertex array
 			points3D.forEach((p) => {
 				allVertices.push(p.x, p.y, p.z);
 			});
 
-			// Push triangle indices (offset by current vertex count)
 			triangles.forEach((idx) => {
 				allIndices.push(idx + vertexOffset);
 			});
