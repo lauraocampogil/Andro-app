@@ -40,7 +40,7 @@ export default function Home() {
 				</View>
 
 				<View style={styles.globeWrapper}>
-					<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0.15} interactive={true} style={styles.globeCanvas} />
+					<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0.15} interactive={true} globeRadius={0.8} style={styles.globeCanvas} />
 
 					{/* Zoom-in button */}
 					<Pressable style={styles.zoomButton} onPress={() => router.push("/(tabs)/globe" as any)}>
