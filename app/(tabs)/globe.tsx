@@ -1,3 +1,4 @@
+import { CosmicBackground } from "@/components/CosmicBackground";
 import { Globe3D } from "@/components/Globe3D/Globe3D";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
@@ -9,20 +10,21 @@ export default function GlobeFullScreen() {
 	const router = useRouter();
 
 	return (
-		<View style={styles.container}>
-			<Pressable style={styles.backButton} onPress={() => router.back()}>
-				<ArrowLeft size={24} color={Colors.white} strokeWidth={2.5} />
-			</Pressable>
+		<CosmicBackground>
+			<View style={styles.container}>
+				<Pressable style={styles.backButton} onPress={() => router.back()}>
+					<ArrowLeft size={24} color={Colors.white} strokeWidth={2.5} />
+				</Pressable>
 
-			<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0} interactive={true} cameraDistance={2.5} />
-		</View>
+				<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0} interactive={true} zoomable={true} cameraDistance={2.5} globeRadius={0.5} />
+			</View>
+		</CosmicBackground>
 	);
 }
 
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: "#04081A",
 	},
 	backButton: {
 		position: "absolute",
@@ -32,7 +34,7 @@ const styles = StyleSheet.create({
 		width: 44,
 		height: 44,
 		borderRadius: 22,
-		backgroundColor: "rgba(91, 88, 235, 0.3)",
+		backgroundColor: Colors.white30,
 		justifyContent: "center",
 		alignItems: "center",
 	},
