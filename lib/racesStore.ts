@@ -26,10 +26,17 @@ export const useRacesStore = create<RacesState>((set) => ({
 
 	loadUserRaces: async (userId: string) => {
 		set({ loading: true });
+		console.log("🔄 Loading races for user:", userId);
+
 		const races = await fetchUserCompletedRaces(userId);
+		console.log("📦 Races fetched:", races.length, races);
+
+		const codes = getCompletedCountryCodes(races);
+		console.log("🌍 Country codes:", codes);
+
 		set({
 			completedRaces: races,
-			countryCodes: getCompletedCountryCodes(races),
+			countryCodes: codes,
 			continents: getCompletedContinents(races),
 			stats: computeProgressStats(races),
 			loading: false,
