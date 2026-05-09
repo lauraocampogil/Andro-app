@@ -2,23 +2,25 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { Globe3D } from "@/components/Globe3D/Globe3D";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
+import { useRacesStore } from "@/lib/racesStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Maximize2, Menu, User } from "lucide-react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Mock data
-const stats = {
-	countries: 12,
-	continents: 3,
-	worldPercent: 8,
-};
-
 export default function Home() {
-	const { signOut } = useAuth();
+	const { session, signOut } = useAuth();
 	const router = useRouter();
+	const { countryCodes, stats, loadUserRaces } = useRacesStore();
+
+	// Load completed races from Supabase when home opens
+	useEffect(() => {
+		if (session?.user?.id) {
+			loadUserRaces(session.user.id);
+		}
+	}, [session?.user?.id]);
 
 	const resetAll = async () => {
 		await AsyncStorage.removeItem("andro_onboarding_completed");
@@ -39,8 +41,9 @@ export default function Home() {
 					</Pressable>
 				</View>
 
+				{/* Globe */}
 				<View style={styles.globeWrapper}>
-					<Globe3D completedCountries={["BEL", "DEU"]} rotationSpeed={0.15} interactive={true} globeRadius={0.8} style={styles.globeCanvas} />
+					<Globe3D completedCountries={countryCodes} rotationSpeed={0.15} interactive={true} globeRadius={0.8} style={styles.globeCanvas} />
 
 					{/* Zoom-in button */}
 					<Pressable style={styles.zoomButton} onPress={() => router.push("/(tabs)/globe" as any)}>
@@ -48,16 +51,16 @@ export default function Home() {
 					</Pressable>
 				</View>
 
-				{/* Stats card */}
+				{/* Stats card with real values from Supabase */}
 				<View style={styles.statsCard}>
 					<View style={styles.statCell}>
-						<Text style={styles.statNum}>{stats.countries}</Text>
+						<Text style={styles.statNum}>{stats.countriesCount}</Text>
 						<Text style={styles.statName}>COUNTRIES</Text>
 					</View>
 					<View style={[styles.statCell, styles.statCellMid]}>
 						<Text style={styles.statNum}>
-							{stats.continents}
-							<Text style={styles.statFrac}>/7</Text>
+							{stats.continentsCount}
+							<Text style={styles.statFrac}>/{stats.totalContinents}</Text>
 						</Text>
 						<Text style={styles.statName}>CONTINENTS</Text>
 					</View>
@@ -91,39 +94,29 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
-
-	globeWrap: {
-		height: 340,
-		alignItems: "center",
-		justifyContent: "center",
+	globeWrapper: {
+		width: "100%",
+		height: 380,
+		alignSelf: "center",
+		marginVertical: Spacing.lg,
 		position: "relative",
-		marginTop: 20,
 	},
-	globeGlow: {
-		position: "absolute",
-		width: 340,
-		height: 340,
-		borderRadius: 170,
-		backgroundColor: Colors.violetLight,
-		opacity: 0.2,
+	globeCanvas: {
+		flex: 1,
+		backgroundColor: "transparent",
 	},
-	pin: {
+	zoomButton: {
 		position: "absolute",
-		width: 28,
-		height: 28,
-		borderRadius: 14,
-		backgroundColor: Colors.secundaire,
-		alignItems: "center",
+		bottom: 16,
+		right: 16,
+		width: 44,
+		height: 44,
+		borderRadius: 22,
+		backgroundColor: Colors.white30,
 		justifyContent: "center",
-		borderWidth: 2,
-		borderColor: Colors.white,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.3,
-		shadowRadius: 8,
-		elevation: 5,
+		alignItems: "center",
+		zIndex: 10,
 	},
-
 	statsCard: {
 		marginHorizontal: Spacing.lg,
 		marginTop: 20,
@@ -160,28 +153,5 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 		color: Colors.ink70,
 		letterSpacing: 1.4,
-	},
-	globeWrapper: {
-		width: "100%",
-		height: 380,
-		alignSelf: "center",
-		marginVertical: Spacing.lg,
-		position: "relative",
-	},
-	globeCanvas: {
-		flex: 1,
-		backgroundColor: "transparent",
-	},
-	zoomButton: {
-		position: "absolute",
-		bottom: 16,
-		right: 16,
-		width: 44,
-		height: 44,
-		borderRadius: 22,
-		backgroundColor: Colors.white30,
-		justifyContent: "center",
-		alignItems: "center",
-		zIndex: 10,
 	},
 });
