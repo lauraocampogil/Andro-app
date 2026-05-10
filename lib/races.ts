@@ -188,3 +188,63 @@ export function computeProgressStats(completedRaces: CompletedRace[]): ProgressS
 		worldPercent: Math.round((countries.length / TOTAL_COUNTRIES) * 100),
 	};
 }
+
+export async function markCardScanned(
+	userId: string,
+	qrCode: string,
+): Promise<{
+	success: boolean;
+	alreadyCollected: boolean;
+	invalidCode: boolean;
+	card?: any;
+	race?: Race;
+}> {
+	// Step 1: Find the card by qr_code
+	const { data: card, error: cardError } = await supabase.from("cards").select("*, race:races(*)").eq("qr_code", qrCode).maybeSingle();
+
+	if (cardError || !card) {
+		console.warn("❌ Card not found for QR:", qrCode);
+		return {
+			success: false,
+			alreadyCollected: false,
+			invalidCode: true,
+		};
+	}
+
+	// Step 2: Check if already collected by this user
+	const { data: existing } = await supabase.from("user_cards").select("id").eq("user_id", userId).eq("card_id", card.id).maybeSingle();
+
+	if (existing) {
+		return {
+			success: false,
+			alreadyCollected: true,
+			invalidCode: false,
+			card,
+			race: card.race as Race,
+		};
+	}
+
+	// Step 3: Insert into user_cards
+	const { error: insertError } = await supabase.from("user_cards").insert({
+		user_id: userId,
+		card_id: card.id,
+		scanned_at: new Date().toISOString(),
+	});
+
+	if (insertError) {
+		console.error("Insert error:", insertError);
+		return {
+			success: false,
+			alreadyCollected: false,
+			invalidCode: false,
+		};
+	}
+
+	return {
+		success: true,
+		alreadyCollected: false,
+		invalidCode: false,
+		card,
+		race: card.race as Race,
+	};
+}
