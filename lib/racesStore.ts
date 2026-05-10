@@ -9,7 +9,7 @@ type RacesState = {
 	loading: boolean;
 
 	loadUserRaces: (userId: string) => Promise<void>;
-	addCompletedRace: (race: CompletedRace) => void;
+	refreshUserRaces: (userId: string) => Promise<void>;
 };
 
 export const useRacesStore = create<RacesState>((set) => ({
@@ -26,31 +26,23 @@ export const useRacesStore = create<RacesState>((set) => ({
 
 	loadUserRaces: async (userId: string) => {
 		set({ loading: true });
-		console.log("🔄 Loading races for user:", userId);
-
 		const races = await fetchUserCompletedRaces(userId);
-		console.log("📦 Races fetched:", races.length, races);
-
-		const codes = getCompletedCountryCodes(races);
-		console.log("🌍 Country codes:", codes);
-
 		set({
 			completedRaces: races,
-			countryCodes: codes,
+			countryCodes: getCompletedCountryCodes(races),
 			continents: getCompletedContinents(races),
 			stats: computeProgressStats(races),
 			loading: false,
 		});
 	},
 
-	addCompletedRace: (race: CompletedRace) =>
-		set((state) => {
-			const newRaces = [...state.completedRaces, race];
-			return {
-				completedRaces: newRaces,
-				countryCodes: getCompletedCountryCodes(newRaces),
-				continents: getCompletedContinents(newRaces),
-				stats: computeProgressStats(newRaces),
-			};
-		}),
+	refreshUserRaces: async (userId: string) => {
+		const races = await fetchUserCompletedRaces(userId);
+		set({
+			completedRaces: races,
+			countryCodes: getCompletedCountryCodes(races),
+			continents: getCompletedContinents(races),
+			stats: computeProgressStats(races),
+		});
+	},
 }));

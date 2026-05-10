@@ -1,5 +1,8 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Spacing } from "@/constants/theme";
+import { useAuth } from "@/lib/auth";
+import { markCardScanned } from "@/lib/races";
+import { useRacesStore } from "@/lib/racesStore";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { ScanLine, X } from "lucide-react-native";
@@ -11,6 +14,8 @@ export default function Scan() {
 	const router = useRouter();
 	const [permission, requestPermission] = useCameraPermissions();
 	const [scanned, setScanned] = useState(false);
+	const { session } = useAuth();
+	const { refreshUserRaces } = useRacesStore();
 
 	// Permission state loading
 	if (!permission) {
@@ -42,7 +47,7 @@ export default function Scan() {
 	}
 
 	// QR scan handler
-	const handleScan = ({ data }: { data: string }) => {
+	const handleScan = async ({ data }: { data: string }) => {
 		if (scanned) return;
 		setScanned(true);
 
@@ -50,15 +55,43 @@ export default function Scan() {
 
 		if (!data.startsWith("ANDRO-")) {
 			console.warn("❌ Invalid QR code format:", data);
-			// Allow retry after 2s
 			setTimeout(() => setScanned(false), 2000);
 			return;
 		}
 
-		console.log("✅ Valid Andro QR:", data);
+		if (!session?.user?.id) {
+			console.warn("❌ No user session");
+			setTimeout(() => setScanned(false), 2000);
+			return;
+		}
 
-		// Reset after 3s for now
-		setTimeout(() => setScanned(false), 3000);
+		console.log("⏳ Processing scan...");
+		const result = await markCardScanned(session.user.id, data);
+
+		if (result.invalidCode) {
+			console.warn("❌ Card not found for this QR");
+			setTimeout(() => setScanned(false), 2000);
+			return;
+		}
+
+		if (result.alreadyCollected) {
+			console.log("⚠️ Already collected:", result.race?.name);
+			setTimeout(() => setScanned(false), 3000);
+			return;
+		}
+
+		if (result.success) {
+			console.log("✅ Card unlocked!", result.race?.name);
+
+			// Refresh the store so the globe + stats update
+			await refreshUserRaces(session.user.id);
+
+			router.replace("/(tabs)/home" as any);
+			return;
+		}
+
+		console.warn("❌ Scan failed");
+		setTimeout(() => setScanned(false), 2000);
 	};
 
 	return (
