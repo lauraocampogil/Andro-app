@@ -28,6 +28,8 @@ export default function Home() {
 		router.replace("/(auth)/welcome" as any);
 	};
 
+	console.log("🏠 Home render — countryCodes:", countryCodes);
+
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
