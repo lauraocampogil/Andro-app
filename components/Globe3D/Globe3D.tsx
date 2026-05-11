@@ -33,7 +33,6 @@ type GlobeInnerProps = {
 };
 
 function Globe({ completedCountries, rotationSpeed, manualRotation, zoomRef, interactive, zoomable, globeRadius }: GlobeInnerProps) {
-	// DEBUG: list all features that could be France or French Guiana
 	React.useEffect(() => {
 		countriesData.features.forEach((f: any) => {
 			const props = f.properties;

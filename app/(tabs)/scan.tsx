@@ -51,46 +51,48 @@ export default function Scan() {
 		if (scanned) return;
 		setScanned(true);
 
-		console.log("📷 QR scanned:", data);
+		console.log("QR scanned:", data);
 
 		if (!data.startsWith("ANDRO-")) {
-			console.warn("❌ Invalid QR code format:", data);
+			console.warn("Invalid QR code format:", data);
 			setTimeout(() => setScanned(false), 2000);
 			return;
 		}
 
 		if (!session?.user?.id) {
-			console.warn("❌ No user session");
+			console.warn("No user session");
 			setTimeout(() => setScanned(false), 2000);
 			return;
 		}
 
-		console.log("⏳ Processing scan...");
+		console.log("Processing scan...");
 		const result = await markCardScanned(session.user.id, data);
 
 		if (result.invalidCode) {
-			console.warn("❌ Card not found for this QR");
+			console.warn("Card not found for this QR");
 			setTimeout(() => setScanned(false), 2000);
 			return;
 		}
 
 		if (result.alreadyCollected) {
-			console.log("⚠️ Already collected:", result.race?.name);
-			setTimeout(() => setScanned(false), 3000);
+			console.log("Already collected:", result.race?.name);
+			// Navigate to reveal in "already collected" mode
+			router.replace(`/card-reveal?qr=${data}&already=true` as any);
 			return;
 		}
 
 		if (result.success) {
-			console.log("✅ Card unlocked!", result.race?.name);
+			console.log("Card unlocked!", result.race?.name);
 
-			// Refresh the store so the globe + stats update
+			// Refresh the store so the globe + stats update for when user comes back
 			await refreshUserRaces(session.user.id);
 
-			router.replace("/(tabs)/home" as any);
+			// Navigate to reveal page
+			router.replace(`/card-reveal?qr=${data}` as any);
 			return;
 		}
 
-		console.warn("❌ Scan failed");
+		console.warn("Scan failed");
 		setTimeout(() => setScanned(false), 2000);
 	};
 
