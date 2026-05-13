@@ -1,9 +1,10 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
+import { resolveCardImage } from "@/lib/cardAssets";
 import { supabase } from "@/lib/supabase";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +21,8 @@ type CardData = {
 		name: string;
 		city: string;
 		country: string;
+		country_code?: string;
+		continent?: string;
 	};
 };
 
@@ -33,24 +36,18 @@ export default function CardReveal() {
 	const [unlockedCount, setUnlockedCount] = useState(0);
 	const [showContent, setShowContent] = useState(false);
 
-	// Shared values for animations
-	const flipValue = useSharedValue(0); // 0 = back, 1 = front
+	const flipValue = useSharedValue(0);
 	const scale = useSharedValue(0.5);
 	const opacity = useSharedValue(0);
 
-	// Fetch card details
 	useEffect(() => {
 		const loadCard = async () => {
 			if (!qrCode) return;
 
-			// Fetch card with race info
-			const { data: cardData } = await supabase.from("cards").select("*, race:races(name, city, country)").eq("qr_code", qrCode).maybeSingle();
+			const { data: cardData } = await supabase.from("cards").select("*, race:races(name, city, country, country_code, continent)").eq("qr_code", qrCode).maybeSingle();
 
-			if (cardData) {
-				setCard(cardData as CardData);
-			}
+			if (cardData) setCard(cardData as CardData);
 
-			// Fetch user's unlocked count
 			const {
 				data: { user },
 			} = await supabase.auth.getUser();
@@ -63,53 +60,58 @@ export default function CardReveal() {
 		loadCard();
 	}, [qrCode]);
 
-	// Trigger the reveal animation once card data is loaded
 	useEffect(() => {
 		if (!card) return;
 
-		//  Scale up + fade in (card appears)
 		scale.value = withSpring(1, { damping: 12, stiffness: 100 });
 		opacity.value = withTiming(1, { duration: 400 });
 
-		//  After 800ms, flip the card
 		flipValue.value = withDelay(
 			800,
 			withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }, (finished) => {
-				if (finished) {
-					runOnJS(setShowContent)(true);
-				}
+				if (finished) runOnJS(setShowContent)(true);
 			}),
 		);
 	}, [card]);
 
-	// Front face animated style (rotateY: 0 → 180, visible when flipped)
 	const frontAnimatedStyle = useAnimatedStyle(() => {
-		const rotateY = `${flipValue.value * 180}deg`;
-		const opacity = flipValue.value > 0.5 ? 1 : 0;
-		return {
-			transform: [{ scale: scale.value }, { rotateY }],
-			opacity,
-		};
-	});
-
-	// Back face animated style (rotateY: 180 → 360, visible when not flipped)
-	const backAnimatedStyle = useAnimatedStyle(() => {
 		const rotateY = `${flipValue.value * 180 + 180}deg`;
-		const opacity = flipValue.value < 0.5 ? 1 : 0;
 		return {
 			transform: [{ scale: scale.value }, { rotateY }],
-			opacity,
 		};
 	});
 
-	const contentAnimatedStyle = useAnimatedStyle(() => {
+	const backAnimatedStyle = useAnimatedStyle(() => {
+		const rotateY = `${flipValue.value * 180}deg`;
 		return {
-			opacity: withTiming(showContent ? 1 : 0, { duration: 500 }),
+			transform: [{ scale: scale.value }, { rotateY }],
 		};
 	});
+
+	const contentAnimatedStyle = useAnimatedStyle(() => ({
+		opacity: withTiming(showContent ? 1 : 0, { duration: 500 }),
+	}));
+
+	const cardImage = useMemo(() => (card ? resolveCardImage(card) : null), [card]);
+
+	useEffect(() => {
+		if (card) {
+			console.log("🎴 CARD DATA:", JSON.stringify(card, null, 2));
+			console.log("🖼️ resolved cardImage:", cardImage);
+			console.log("🖼️ typeof cardImage:", typeof cardImage);
+			console.log("🖼️ cardImage === null:", cardImage === null);
+		}
+	}, [card, cardImage]);
 
 	const handleContinue = () => {
-		router.replace("/(tabs)/home" as any);
+		if (!alreadyCollected && card?.race?.continent) {
+			router.replace({
+				pathname: "/(tabs)/home",
+				params: { unlockedContinent: card.race.continent },
+			} as any);
+		} else {
+			router.replace("/(tabs)/home" as any);
+		}
 	};
 
 	if (!card) {
@@ -122,7 +124,6 @@ export default function CardReveal() {
 		);
 	}
 
-	// Rarity-based glow colors
 	const glowColor = card.rarity === "legendary" ? "#FFD15C" : "#5B58EB";
 
 	return (
@@ -132,22 +133,16 @@ export default function CardReveal() {
 					<Text style={styles.headerText}>{alreadyCollected ? "Already in your collection" : "Card Unlocked!"}</Text>
 				</View>
 
-				{/* Card stack (back + front with flip animation) */}
 				<View style={styles.cardWrapper}>
-					{/* Glow effect */}
-					<View style={[styles.glow, { backgroundColor: glowColor }]} />
-
-					{/* Card back */}
 					<Animated.View style={[styles.card, styles.cardBack, backAnimatedStyle]}>
 						<View style={styles.cardBackContent}>
 							<Text style={styles.cardBackLogo}>ANDRO</Text>
 						</View>
 					</Animated.View>
 
-					{/* Card front */}
 					<Animated.View style={[styles.card, styles.cardFront, frontAnimatedStyle]}>
-						{card.creature_image_url && card.creature_image_url.startsWith("http") ? (
-							<Image source={{ uri: card.creature_image_url }} style={styles.cardImage} resizeMode="cover" />
+						{cardImage ? (
+							<Image source={cardImage} style={styles.cardImage} resizeMode="contain" />
 						) : (
 							<View style={[styles.cardPlaceholder, { backgroundColor: glowColor + "30" }]}>
 								<Text style={styles.cardPlaceholderEmoji}>{card.rarity === "legendary" ? "👑" : "✨"}</Text>
@@ -157,7 +152,6 @@ export default function CardReveal() {
 					</Animated.View>
 				</View>
 
-				{/* Info below card */}
 				<Animated.View style={[styles.info, contentAnimatedStyle]}>
 					<Text style={styles.creatureName}>{card.creature_name}</Text>
 					<Text style={styles.raceName}>{card.race.name}</Text>
@@ -172,7 +166,6 @@ export default function CardReveal() {
 					</View>
 				</Animated.View>
 
-				{/* Continue button */}
 				<Animated.View style={[styles.buttonWrapper, contentAnimatedStyle]}>
 					<Button label="Continue" onPress={handleContinue} />
 				</Animated.View>
@@ -208,7 +201,6 @@ const styles = StyleSheet.create({
 		height: CARD_HEIGHT + 60,
 		borderRadius: CARD_WIDTH,
 		opacity: 0.3,
-		// blur effect (limited on RN, but adds visual interest)
 	},
 	card: {
 		position: "absolute",
@@ -239,8 +231,14 @@ const styles = StyleSheet.create({
 		color: Colors.white,
 		letterSpacing: 4,
 	},
-	cardFront: { backgroundColor: Colors.white },
-	cardImage: { width: "100%", height: "100%" },
+	cardFront: {
+		backgroundColor: "transparent",
+	},
+	cardImage: {
+		width: "100%",
+		height: "100%",
+		backgroundColor: "transparent",
+	},
 	cardPlaceholder: {
 		flex: 1,
 		alignItems: "center",
