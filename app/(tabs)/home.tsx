@@ -1,26 +1,40 @@
+import { ContinentUnlockedPopup } from "@/components/ContinentUnlockedPopup";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Globe3D } from "@/components/Globe3D/Globe3D";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
+import { hasContinentImage } from "@/lib/continentAssets";
 import { useRacesStore } from "@/lib/racesStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Maximize2, Menu, User } from "lucide-react-native";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Home() {
 	const { session, signOut } = useAuth();
 	const router = useRouter();
-	const { countryCodes, stats, loadUserRaces } = useRacesStore();
+	const { countryCodes, continents, stats, loadUserRaces } = useRacesStore();
 
-	// Load completed races from Supabase when home opens
+	const params = useLocalSearchParams<{ unlockedContinent?: string }>();
+	const [popupContinent, setPopupContinent] = useState<string | null>(null);
+	const handledRef = useRef<Set<string>>(new Set());
+
 	useEffect(() => {
-		if (session?.user?.id) {
-			loadUserRaces(session.user.id);
-		}
+		if (session?.user?.id) loadUserRaces(session.user.id);
 	}, [session?.user?.id]);
+
+	useEffect(() => {
+		const incoming = params.unlockedContinent;
+		if (!incoming || typeof incoming !== "string") return;
+		if (handledRef.current.has(incoming)) return;
+		if (!hasContinentImage(incoming)) return;
+		if (!continents.includes(incoming)) return;
+
+		handledRef.current.add(incoming);
+		setPopupContinent(incoming);
+	}, [params.unlockedContinent, continents]);
 
 	const resetAll = async () => {
 		await AsyncStorage.removeItem("andro_onboarding_completed");
@@ -28,12 +42,9 @@ export default function Home() {
 		router.replace("/(auth)/welcome" as any);
 	};
 
-	console.log("🏠 Home render — countryCodes:", countryCodes);
-
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-				{/* Header */}
 				<View style={styles.header}>
 					<Pressable style={styles.headerBtn} onPress={resetAll}>
 						<User size={20} color={Colors.ink} strokeWidth={2} />
@@ -43,17 +54,14 @@ export default function Home() {
 					</Pressable>
 				</View>
 
-				{/* Globe */}
 				<View style={styles.globeWrapper}>
 					<Globe3D completedCountries={countryCodes} rotationSpeed={0.15} interactive={true} globeRadius={0.8} style={styles.globeCanvas} />
 
-					{/* Zoom-in button */}
 					<Pressable style={styles.zoomButton} onPress={() => router.push("/(tabs)/globe" as any)}>
 						<Maximize2 size={18} color={Colors.white} strokeWidth={2.5} />
 					</Pressable>
 				</View>
 
-				{/* Stats card with real values from Supabase */}
 				<View style={styles.statsCard}>
 					<View style={styles.statCell}>
 						<Text style={styles.statNum}>{stats.countriesCount}</Text>
@@ -75,6 +83,8 @@ export default function Home() {
 					</View>
 				</View>
 			</SafeAreaView>
+
+			<ContinentUnlockedPopup visible={popupContinent !== null} continent={popupContinent ?? ""} onClose={() => setPopupContinent(null)} />
 		</CosmicBackground>
 	);
 }
@@ -103,10 +113,7 @@ const styles = StyleSheet.create({
 		marginVertical: Spacing.lg,
 		position: "relative",
 	},
-	globeCanvas: {
-		flex: 1,
-		backgroundColor: "transparent",
-	},
+	globeCanvas: { flex: 1, backgroundColor: "transparent" },
 	zoomButton: {
 		position: "absolute",
 		bottom: 16,
