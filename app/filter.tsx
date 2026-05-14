@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
+import { Level, useFiltersStore } from "@/lib/filtersStore";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown, X } from "lucide-react-native";
 import React, { useState } from "react";
@@ -9,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const CONTINENTS = ["Africa", "Asia", "Australia", "Europe", "North America", "South America"];
 const DISTANCES = [5, 10, 24, 42];
-const LEVELS: ("beginner" | "intermediate" | "advanced")[] = ["beginner", "intermediate", "advanced"];
+const LEVELS: Level[] = ["beginner", "intermediate", "advanced"];
 const SURFACES = ["Asphalt", "Mud", "Other", "Terrain", "Sand", "Trail", "Snow", "Grass", "Mixed"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const YEARS = [2025, 2026, 2027];
@@ -62,15 +63,17 @@ function Dropdown({ label, value, options, onSelect }: { label: string; value: s
 
 export default function FilterScreen() {
 	const router = useRouter();
+	const { filters: stored, setFilters, resetFilters } = useFiltersStore();
 
-	const [year, setYear] = useState<number>(2026);
-	const [month, setMonth] = useState<string>("December");
-	const [continents, setContinents] = useState<string[]>([]);
-	const [distances, setDistances] = useState<number[]>([]);
-	const [levels, setLevels] = useState<("beginner" | "intermediate" | "advanced")[]>([]);
-	const [surfaces, setSurfaces] = useState<string[]>([]);
-	const [superHalf, setSuperHalf] = useState(false);
-	const [majors, setMajors] = useState(false);
+	// Local state initialized from the store
+	const [year, setYear] = useState<number | undefined>(stored.year);
+	const [monthIndex, setMonthIndex] = useState<number | undefined>(stored.month); // 1-12
+	const [continents, setContinents] = useState<string[]>(stored.continents);
+	const [distances, setDistances] = useState<number[]>(stored.distances);
+	const [levels, setLevels] = useState<Level[]>(stored.levels);
+	const [surfaces, setSurfaces] = useState<string[]>(stored.surfaces);
+	const [superHalf, setSuperHalf] = useState(stored.superHalf);
+	const [majors, setMajors] = useState(stored.majors);
 
 	const toggle = <T,>(arr: T[], val: T, set: (v: T[]) => void) => {
 		if (arr.includes(val)) set(arr.filter((x) => x !== val));
@@ -78,8 +81,29 @@ export default function FilterScreen() {
 	};
 
 	const handleApply = () => {
-		// TODO: wire up with a shared filter store (Zustand) so Races reads it.
-		// For MVP2 step 1, just close.
+		setFilters({
+			year,
+			month: monthIndex,
+			continents,
+			distances,
+			levels,
+			surfaces,
+			superHalf,
+			majors,
+		});
+		router.back();
+	};
+
+	const handleReset = () => {
+		resetFilters();
+		setYear(undefined);
+		setMonthIndex(undefined);
+		setContinents([]);
+		setDistances([]);
+		setLevels([]);
+		setSurfaces([]);
+		setSuperHalf(false);
+		setMajors(false);
 		router.back();
 	};
 
@@ -98,10 +122,10 @@ export default function FilterScreen() {
 					{/* Year + Month */}
 					<View style={styles.row2}>
 						<View style={{ flex: 1 }}>
-							<Dropdown label="Year" value={String(year)} options={YEARS.map(String)} onSelect={(v) => setYear(Number(v))} />
+							<Dropdown label="Year" value={year ? String(year) : "Any"} options={["Any", ...YEARS.map(String)]} onSelect={(v) => setYear(v === "Any" ? undefined : Number(v))} />
 						</View>
 						<View style={{ flex: 1 }}>
-							<Dropdown label="Month" value={month} options={MONTHS} onSelect={setMonth} />
+							<Dropdown label="Month" value={monthIndex ? MONTHS[monthIndex - 1] : "Any"} options={["Any", ...MONTHS]} onSelect={(v) => setMonthIndex(v === "Any" ? undefined : MONTHS.indexOf(v) + 1)} />
 						</View>
 					</View>
 
@@ -148,9 +172,12 @@ export default function FilterScreen() {
 						<Pill active={majors} label="Majors" onPress={() => setMajors(!majors)} />
 					</View>
 
-					{/* Apply */}
-					<View style={{ marginTop: Spacing.xl }}>
+					{/* Actions */}
+					<View style={{ marginTop: Spacing.xl, gap: Spacing.sm }}>
 						<Button label="Apply filters" onPress={handleApply} />
+						<Pressable onPress={handleReset} style={styles.resetBtn}>
+							<Text style={styles.resetText}>Reset all</Text>
+						</Pressable>
 					</View>
 				</ScrollView>
 			</SafeAreaView>
@@ -167,47 +194,12 @@ const styles = StyleSheet.create({
 		marginTop: Spacing.sm,
 		marginBottom: Spacing.xl,
 	},
-	title: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h2,
-		fontStyle: "italic",
-		color: Colors.white,
-		letterSpacing: 1,
-	},
-	closeBtn: {
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		backgroundColor: Colors.white,
-		alignItems: "center",
-		justifyContent: "center",
-	},
+	title: { fontFamily: Fonts.display, fontSize: FontSizes.h2, fontStyle: "italic", color: Colors.white, letterSpacing: 1 },
+	closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white, alignItems: "center", justifyContent: "center" },
 	row2: { flexDirection: "row", gap: Spacing.lg, marginBottom: Spacing.lg },
-	fieldLabel: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 14,
-		fontWeight: "700",
-		color: Colors.white,
-		marginBottom: Spacing.sm,
-	},
-	dropdown: {
-		height: 38,
-		paddingHorizontal: 14,
-		borderRadius: Radius.pill,
-		backgroundColor: Colors.secundaire,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		alignSelf: "flex-start",
-		minWidth: 110,
-	},
-	dropdownText: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 13,
-		fontWeight: "700",
-		color: Colors.white,
-		marginRight: 8,
-	},
+	fieldLabel: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white, marginBottom: Spacing.sm },
+	dropdown: { height: 38, paddingHorizontal: 14, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, flexDirection: "row", alignItems: "center", justifyContent: "space-between", alignSelf: "flex-start", minWidth: 110 },
+	dropdownText: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "700", color: Colors.white, marginRight: 8 },
 	dropdownMenu: {
 		position: "absolute",
 		top: 70,
@@ -227,43 +219,18 @@ const styles = StyleSheet.create({
 	},
 	dropdownItem: { paddingHorizontal: 14, paddingVertical: 10 },
 	dropdownItemText: { fontFamily: Fonts.body, fontSize: 14, color: Colors.white },
-	section: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 20,
-		fontWeight: "800",
-		color: Colors.white,
-		marginTop: Spacing.lg,
-		marginBottom: Spacing.md,
-	},
+	section: { fontFamily: Fonts.bodyBold, fontSize: 20, fontWeight: "800", color: Colors.white, marginTop: Spacing.lg, marginBottom: Spacing.md },
 	checkGrid: { flexDirection: "row", flexWrap: "wrap" },
 	checkCol: { width: "50%", marginBottom: 10 },
 	checkboxRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-	checkbox: {
-		width: 20,
-		height: 20,
-		borderRadius: 4,
-		borderWidth: 1.5,
-		borderColor: Colors.white,
-		alignItems: "center",
-		justifyContent: "center",
-	},
+	checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: Colors.white, alignItems: "center", justifyContent: "center" },
 	checkboxChecked: { backgroundColor: Colors.secundaire, borderColor: Colors.secundaire },
 	checkboxLabel: { fontFamily: Fonts.body, fontSize: 15, color: Colors.white },
 	pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-	pill: {
-		paddingHorizontal: 18,
-		paddingVertical: 9,
-		borderRadius: Radius.pill,
-		borderWidth: 1.5,
-		borderColor: Colors.secundaire,
-		backgroundColor: "transparent",
-	},
+	pill: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Colors.secundaire, backgroundColor: "transparent" },
 	pillActive: { backgroundColor: Colors.secundaire },
-	pillText: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 14,
-		fontWeight: "700",
-		color: Colors.white,
-	},
+	pillText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
 	pillTextActive: { color: Colors.white },
+	resetBtn: { alignItems: "center", paddingVertical: 14 },
+	resetText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white70, textDecorationLine: "underline" },
 });
