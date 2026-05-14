@@ -2,32 +2,13 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
+import { useFiltersStore } from "@/lib/filtersStore";
 import { fetchAllRaces, Race } from "@/lib/races";
 import { useRouter } from "expo-router";
 import { Calendar, Crown, Footprints, ListFilter, MapPin, Search, Star } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type RaceFilters = {
-	year?: number;
-	month?: number; // 1-12
-	continents: string[];
-	distances: number[]; // [5, 10, 24, 42]
-	levels: ("beginner" | "intermediate" | "advanced")[];
-	surfaces: string[];
-	superHalf: boolean;
-	majors: boolean;
-};
-
-export const DEFAULT_FILTERS: RaceFilters = {
-	continents: [],
-	distances: [],
-	levels: [],
-	surfaces: [],
-	superHalf: false,
-	majors: false,
-};
 
 function levelLabel(level: string) {
 	if (level === "beginner") return "Beginner";
@@ -96,7 +77,7 @@ export default function Races() {
 	const [allRaces, setAllRaces] = useState<Race[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
-	const [filters] = useState<RaceFilters>(DEFAULT_FILTERS);
+	const filters = useFiltersStore((s) => s.filters);
 
 	useEffect(() => {
 		(async () => {
@@ -123,7 +104,9 @@ export default function Races() {
 		return list;
 	}, [allRaces, search, filters]);
 
-	const isDefaultView = !search.trim();
+	const hasActiveFilters = filters.year !== undefined || filters.month !== undefined || filters.continents.length > 0 || filters.distances.length > 0 || filters.levels.length > 0 || filters.surfaces.length > 0 || filters.superHalf || filters.majors;
+
+	const isDefaultView = !search.trim() && !hasActiveFilters;
 
 	const nearYou = useMemo(() => filteredRaces.filter((r) => r.country_code === "BEL"), [filteredRaces]);
 	const featured = useMemo(() => filteredRaces.filter((r) => r.is_major || r.is_superhalf), [filteredRaces]);
