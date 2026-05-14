@@ -12,7 +12,7 @@ export function ScreenHeader({ left, center, right }: Props) {
 	return (
 		<View style={styles.header}>
 			{left && <View>{left}</View>}
-			{center && <View style={styles.center}>{center}</View>}
+			{center ? <View style={styles.center}>{center}</View> : <View style={styles.spacer} />}
 			{right && <View>{right}</View>}
 		</View>
 	);
@@ -28,6 +28,9 @@ const styles = StyleSheet.create({
 		paddingBottom: Spacing.lg,
 	},
 	center: {
+		flex: 1,
+	},
+	spacer: {
 		flex: 1,
 	},
 });
