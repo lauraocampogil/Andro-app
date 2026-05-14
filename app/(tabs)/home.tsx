@@ -1,6 +1,8 @@
 import { ContinentUnlockedPopup } from "@/components/ContinentUnlockedPopup";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Globe3D } from "@/components/Globe3D/Globe3D";
+import { HeaderButton } from "@/components/HeaderButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { hasContinentImage } from "@/lib/continentAssets";
@@ -45,14 +47,18 @@ export default function Home() {
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-				<View style={styles.header}>
-					<Pressable style={styles.headerBtn} onPress={resetAll}>
-						<User size={20} color={Colors.ink} strokeWidth={2} />
-					</Pressable>
-					<Pressable style={[styles.headerBtn, { backgroundColor: Colors.secundaire }]}>
-						<ListFilter size={20} color={Colors.white} strokeWidth={2} />
-					</Pressable>
-				</View>
+				<ScreenHeader
+					left={
+						<HeaderButton onPress={resetAll}>
+							<User size={20} color={Colors.ink} strokeWidth={2} />
+						</HeaderButton>
+					}
+					right={
+						<HeaderButton variant="primary">
+							<ListFilter size={20} color={Colors.white} strokeWidth={2} />
+						</HeaderButton>
+					}
+				/>
 
 				<View style={styles.globeWrapper}>
 					<Globe3D completedCountries={countryCodes} rotationSpeed={0.15} interactive={true} globeRadius={0.8} style={styles.globeCanvas} />
@@ -90,22 +96,6 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-	header: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		paddingHorizontal: Spacing.lg,
-		paddingTop: 8,
-		paddingBottom: Spacing.base,
-	},
-	headerBtn: {
-		width: 44,
-		height: 44,
-		borderRadius: 12,
-		backgroundColor: Colors.white,
-		alignItems: "center",
-		justifyContent: "center",
-	},
 	globeWrapper: {
 		width: "100%",
 		height: 380,

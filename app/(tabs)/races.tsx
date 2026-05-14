@@ -1,4 +1,6 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { HeaderButton } from "@/components/HeaderButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { fetchAllRaces, Race } from "@/lib/races";
 import { useRouter } from "expo-router";
@@ -130,15 +132,19 @@ export default function Races() {
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
 				{/* Search + filter */}
-				<View style={styles.searchRow}>
-					<View style={styles.searchBox}>
-						<Search size={18} color={Colors.white70} strokeWidth={2.2} />
-						<TextInput value={search} onChangeText={setSearch} placeholder="Search races, cities, countries" placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
-					</View>
-					<Pressable style={styles.filterBtn} onPress={() => router.push("/filter" as any)}>
-						<ListFilter size={20} color={Colors.white} strokeWidth={2} />
-					</Pressable>
-				</View>
+				<ScreenHeader
+					center={
+						<View style={styles.searchBox}>
+							<Search size={18} color={Colors.white70} strokeWidth={2.2} />
+							<TextInput value={search} onChangeText={setSearch} placeholder="Search races, cities, countries" placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
+						</View>
+					}
+					right={
+						<HeaderButton variant="primary" onPress={() => router.push("/filter" as any)}>
+							<ListFilter size={20} color={Colors.white} strokeWidth={2} />
+						</HeaderButton>
+					}
+				/>
 
 				{loading ? (
 					<View style={styles.center}>
@@ -199,14 +205,6 @@ export default function Races() {
 }
 
 const styles = StyleSheet.create({
-	searchRow: {
-		flexDirection: "row",
-		gap: Spacing.sm,
-		paddingHorizontal: Spacing.lg,
-		paddingTop: Spacing.sm,
-		paddingBottom: Spacing.lg,
-		alignItems: "center",
-	},
 	searchBox: {
 		flex: 1,
 		height: 48,
@@ -226,14 +224,6 @@ const styles = StyleSheet.create({
 		color: Colors.white,
 		height: "100%",
 		padding: 0,
-	},
-	filterBtn: {
-		width: 44,
-		height: 44,
-		borderRadius: 12,
-		backgroundColor: Colors.secundaire,
-		alignItems: "center",
-		justifyContent: "center",
 	},
 	sectionTitle: {
 		fontFamily: Fonts.display,
