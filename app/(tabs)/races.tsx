@@ -113,21 +113,16 @@ export default function Races() {
 		return list;
 	}, [allRaces, search, filters, favoriteIds]);
 
-	const hasActiveFilters =
-		filters.year !== undefined ||
-		filters.month !== undefined ||
-		filters.continents.length > 0 ||
-		filters.distances.length > 0 ||
-		filters.levels.length > 0 ||
-		filters.surfaces.length > 0 ||
-		filters.superHalf ||
-		filters.majors ||
-		filters.favoritesOnly;
+	const hasActiveFiltersExceptFav =
+		filters.year !== undefined || filters.month !== undefined || filters.continents.length > 0 || filters.distances.length > 0 || filters.levels.length > 0 || filters.surfaces.length > 0 || filters.superHalf || filters.majors;
 
-	const isDefaultView = !search.trim() && !hasActiveFilters;
+	const isDefaultView = !search.trim() && !hasActiveFiltersExceptFav;
 
+	const favorites = useMemo(() => filteredRaces.filter((r) => favoriteIds.has(r.id)), [filteredRaces, favoriteIds]);
 	const nearYou = useMemo(() => filteredRaces.filter((r) => r.country_code === "BEL"), [filteredRaces]);
 	const featured = useMemo(() => filteredRaces.filter((r) => r.is_major || r.is_superhalf), [filteredRaces]);
+
+	const showFavoritesSection = filters.favoritesOnly || (isDefaultView && favorites.length > 0);
 
 	const openRace = (id: string) => router.push(`/race/${id}` as any);
 
@@ -159,16 +154,25 @@ export default function Races() {
 						keyExtractor={() => ""}
 						ListHeaderComponent={
 							<View style={{ paddingBottom: 120 }}>
-								{nearYou.length > 0 && (
+								{showFavoritesSection && favorites.length > 0 && (
 									<>
-										<Text style={styles.sectionTitle}>Near You</Text>
+										<Text style={styles.sectionTitle}>Favorites</Text>
+										{favorites.map((r) => (
+											<RaceCard key={r.id} race={r} onPress={() => openRace(r.id)} />
+										))}
+									</>
+								)}
+
+								{!filters.favoritesOnly && nearYou.length > 0 && (
+									<>
+										<Text style={[styles.sectionTitle, showFavoritesSection && { marginTop: Spacing.xl }]}>Near You</Text>
 										{nearYou.map((r) => (
 											<RaceCard key={r.id} race={r} onPress={() => openRace(r.id)} />
 										))}
 									</>
 								)}
 
-								{featured.length > 0 && (
+								{!filters.favoritesOnly && featured.length > 0 && (
 									<>
 										<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>Featured Races</Text>
 										{featured.map((r) => (
@@ -177,7 +181,7 @@ export default function Races() {
 									</>
 								)}
 
-								{nearYou.length === 0 && featured.length === 0 && (
+								{nearYou.length === 0 && featured.length === 0 && favorites.length === 0 && (
 									<View style={styles.center}>
 										<Text style={styles.emptyText}>No races yet.</Text>
 									</View>
