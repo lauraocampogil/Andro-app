@@ -4,13 +4,14 @@ export type Level = "beginner" | "intermediate" | "advanced";
 
 export type RaceFilters = {
 	year?: number;
-	month?: number; // 1-12
+	month?: number;
 	continents: string[];
 	distances: number[];
 	levels: Level[];
 	surfaces: string[];
 	superHalf: boolean;
 	majors: boolean;
+	favoritesOnly: boolean;
 };
 
 export const DEFAULT_FILTERS: RaceFilters = {
@@ -20,6 +21,7 @@ export const DEFAULT_FILTERS: RaceFilters = {
 	surfaces: [],
 	superHalf: false,
 	majors: false,
+	favoritesOnly: false,
 };
 
 type FiltersStore = {

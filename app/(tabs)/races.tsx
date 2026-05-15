@@ -2,6 +2,8 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
+import { useAuth } from "@/lib/auth";
+import { useFavoritesStore } from "@/lib/favoritesStore";
 import { useFiltersStore } from "@/lib/filtersStore";
 import { fetchAllRaces, Race } from "@/lib/races";
 import { useRouter } from "expo-router";
@@ -74,10 +76,12 @@ function RaceCard({ race, onPress }: { race: Race; onPress: () => void }) {
 
 export default function Races() {
 	const router = useRouter();
+	const { session } = useAuth();
 	const [allRaces, setAllRaces] = useState<Race[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
 	const filters = useFiltersStore((s) => s.filters);
+	const { favoriteIds, loadFavorites } = useFavoritesStore();
 
 	useEffect(() => {
 		(async () => {
@@ -86,6 +90,10 @@ export default function Races() {
 			setLoading(false);
 		})();
 	}, []);
+
+	useEffect(() => {
+		if (session?.user?.id) loadFavorites(session.user.id);
+	}, [session?.user?.id]);
 
 	const filteredRaces = useMemo(() => {
 		let list = allRaces;
@@ -101,20 +109,31 @@ export default function Races() {
 		if (filters.majors) list = list.filter((r) => r.is_major);
 		if (filters.year !== undefined) list = list.filter((r) => new Date(r.race_date).getFullYear() === filters.year);
 		if (filters.month !== undefined) list = list.filter((r) => new Date(r.race_date).getMonth() + 1 === filters.month);
+		if (filters.favoritesOnly) list = list.filter((r) => favoriteIds.has(r.id));
 		return list;
-	}, [allRaces, search, filters]);
+	}, [allRaces, search, filters, favoriteIds]);
 
-	const hasActiveFilters = filters.year !== undefined || filters.month !== undefined || filters.continents.length > 0 || filters.distances.length > 0 || filters.levels.length > 0 || filters.surfaces.length > 0 || filters.superHalf || filters.majors;
+	const hasActiveFilters =
+		filters.year !== undefined ||
+		filters.month !== undefined ||
+		filters.continents.length > 0 ||
+		filters.distances.length > 0 ||
+		filters.levels.length > 0 ||
+		filters.surfaces.length > 0 ||
+		filters.superHalf ||
+		filters.majors ||
+		filters.favoritesOnly;
 
 	const isDefaultView = !search.trim() && !hasActiveFilters;
 
 	const nearYou = useMemo(() => filteredRaces.filter((r) => r.country_code === "BEL"), [filteredRaces]);
 	const featured = useMemo(() => filteredRaces.filter((r) => r.is_major || r.is_superhalf), [filteredRaces]);
 
+	const openRace = (id: string) => router.push(`/race/${id}` as any);
+
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-				{/* Search + filter */}
 				<ScreenHeader
 					center={
 						<View style={styles.searchBox}>
@@ -144,7 +163,7 @@ export default function Races() {
 									<>
 										<Text style={styles.sectionTitle}>Near You</Text>
 										{nearYou.map((r) => (
-											<RaceCard key={r.id} race={r} onPress={() => {}} />
+											<RaceCard key={r.id} race={r} onPress={() => openRace(r.id)} />
 										))}
 									</>
 								)}
@@ -153,7 +172,7 @@ export default function Races() {
 									<>
 										<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>Featured Races</Text>
 										{featured.map((r) => (
-											<RaceCard key={r.id} race={r} onPress={() => {}} />
+											<RaceCard key={r.id} race={r} onPress={() => openRace(r.id)} />
 										))}
 									</>
 								)}
@@ -172,7 +191,7 @@ export default function Races() {
 					<FlatList
 						data={filteredRaces}
 						keyExtractor={(item) => item.id}
-						renderItem={({ item }) => <RaceCard race={item} onPress={() => {}} />}
+						renderItem={({ item }) => <RaceCard race={item} onPress={() => openRace(item.id)} />}
 						contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: 120 }}
 						showsVerticalScrollIndicator={false}
 						ListEmptyComponent={

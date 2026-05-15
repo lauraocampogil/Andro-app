@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 
-// Race type (matches Supabase schema)
 export type Race = {
 	id: string;
 	name: string;
@@ -16,9 +15,11 @@ export type Race = {
 	is_superhalf: boolean;
 	lat: number;
 	lng: number;
+	course_image_url?: string | null;
+	start_address?: string | null;
+	finish_address?: string | null;
 };
 
-// User's completed race (joined from user_cards → cards → races)
 export type CompletedRace = {
 	user_id: string;
 	race_id: string;
@@ -27,10 +28,12 @@ export type CompletedRace = {
 	finish_pace?: string | null;
 	race: Race;
 };
+export async function fetchRaceById(id: string): Promise<Race | null> {
+	const { data, error } = await supabase.from("races").select("*").eq("id", id).maybeSingle();
+	if (error || !data) return null;
+	return data as Race;
+}
 
-/**
- * Fetch all races from Supabase
- */
 export async function fetchAllRaces(): Promise<Race[]> {
 	const { data, error } = await supabase.from("races").select("*").order("race_date", { ascending: true });
 
@@ -41,12 +44,7 @@ export async function fetchAllRaces(): Promise<Race[]> {
 	return data || [];
 }
 
-/**
- * Fetch all races completed by a user.
- * Flow: user_cards → cards → races (via card_id, then race_id).
- */
 export async function fetchUserCompletedRaces(userId: string): Promise<CompletedRace[]> {
-	// Step 1: Get user_cards rows for this user
 	const { data: userCards, error: ucError } = await supabase.from("user_cards").select("*").eq("user_id", userId);
 
 	if (ucError) {
@@ -55,7 +53,6 @@ export async function fetchUserCompletedRaces(userId: string): Promise<Completed
 	}
 	if (!userCards || userCards.length === 0) return [];
 
-	// Step 2: Get cards (which have race_id)
 	const cardIds = userCards.map((uc: any) => uc.card_id).filter(Boolean);
 	if (cardIds.length === 0) return [];
 
@@ -66,7 +63,6 @@ export async function fetchUserCompletedRaces(userId: string): Promise<Completed
 		return [];
 	}
 
-	// Step 3: Get races
 	const raceIds = cards.map((c: any) => c.race_id).filter(Boolean);
 	if (raceIds.length === 0) return [];
 
@@ -97,10 +93,6 @@ export async function fetchUserCompletedRaces(userId: string): Promise<Completed
 	return result;
 }
 
-/**
- * Get unique country codes (ISO_A3) from completed races.
- * Used to color the globe.
- */
 export function getCompletedCountryCodes(completedRaces: CompletedRace[]): string[] {
 	const codes = new Set<string>();
 	completedRaces.forEach((cr) => {
@@ -110,10 +102,6 @@ export function getCompletedCountryCodes(completedRaces: CompletedRace[]): strin
 	});
 	return Array.from(codes);
 }
-
-/**
- * Get unique continents from completed races.
- */
 export function getCompletedContinents(completedRaces: CompletedRace[]): string[] {
 	const continents = new Set<string>();
 	completedRaces.forEach((cr) => {
@@ -124,12 +112,7 @@ export function getCompletedContinents(completedRaces: CompletedRace[]): string[
 	return Array.from(continents);
 }
 
-/**
- * Mark a race as completed by inserting a user_cards row.
- * Called after a successful QR scan.
- */
 export async function markRaceAsCompleted(userId: string, raceId: string, finishTime?: string, finishPace?: string): Promise<{ success: boolean; alreadyCollected: boolean; race?: Race }> {
-	// Step 1: Find a card for this race
 	const { data: card, error: cError } = await supabase.from("cards").select("id").eq("race_id", raceId).limit(1).maybeSingle();
 
 	if (cError || !card) {
@@ -137,14 +120,12 @@ export async function markRaceAsCompleted(userId: string, raceId: string, finish
 		return { success: false, alreadyCollected: false };
 	}
 
-	// Step 2: Check if already collected
 	const { data: existing } = await supabase.from("user_cards").select("id").eq("user_id", userId).eq("card_id", card.id).maybeSingle();
 
 	if (existing) {
 		return { success: false, alreadyCollected: true };
 	}
 
-	// Step 3: Insert user_cards row
 	const { error: insertError } = await supabase.from("user_cards").insert({
 		user_id: userId,
 		card_id: card.id,
@@ -158,15 +139,11 @@ export async function markRaceAsCompleted(userId: string, raceId: string, finish
 		return { success: false, alreadyCollected: false };
 	}
 
-	// Step 4: Return race details for the reveal animation
 	const { data: race } = await supabase.from("races").select("*").eq("id", raceId).single();
 
 	return { success: true, alreadyCollected: false, race: race as Race };
 }
 
-/**
- * Compute progress stats from completed races
- */
 export type ProgressStats = {
 	countriesCount: number;
 	continentsCount: number;
@@ -199,7 +176,6 @@ export async function markCardScanned(
 	card?: any;
 	race?: Race;
 }> {
-	// Step 1: Find the card by qr_code
 	const { data: card, error: cardError } = await supabase.from("cards").select("*, race:races(*)").eq("qr_code", qrCode).maybeSingle();
 
 	if (cardError || !card) {
@@ -211,7 +187,6 @@ export async function markCardScanned(
 		};
 	}
 
-	// Step 2: Check if already collected by this user
 	const { data: existing } = await supabase.from("user_cards").select("id").eq("user_id", userId).eq("card_id", card.id).maybeSingle();
 
 	if (existing) {
@@ -224,7 +199,6 @@ export async function markCardScanned(
 		};
 	}
 
-	// Step 3: Insert into user_cards
 	const { error: insertError } = await supabase.from("user_cards").insert({
 		user_id: userId,
 		card_id: card.id,

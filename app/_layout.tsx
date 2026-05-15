@@ -42,6 +42,7 @@ export default function RootLayout() {
 				<Stack.Screen name="(auth)" />
 				<Stack.Screen name="(tabs)" />
 				<Stack.Screen name="card-reveal" />
+				<Stack.Screen name="race/[id]" options={{ headerShown: false }} />
 			</Stack>
 		</>
 	);

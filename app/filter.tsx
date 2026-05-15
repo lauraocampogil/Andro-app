@@ -65,15 +65,15 @@ export default function FilterScreen() {
 	const router = useRouter();
 	const { filters: stored, setFilters, resetFilters } = useFiltersStore();
 
-	// Local state initialized from the store
 	const [year, setYear] = useState<number | undefined>(stored.year);
-	const [monthIndex, setMonthIndex] = useState<number | undefined>(stored.month); // 1-12
+	const [monthIndex, setMonthIndex] = useState<number | undefined>(stored.month);
 	const [continents, setContinents] = useState<string[]>(stored.continents);
 	const [distances, setDistances] = useState<number[]>(stored.distances);
 	const [levels, setLevels] = useState<Level[]>(stored.levels);
 	const [surfaces, setSurfaces] = useState<string[]>(stored.surfaces);
 	const [superHalf, setSuperHalf] = useState(stored.superHalf);
 	const [majors, setMajors] = useState(stored.majors);
+	const [favoritesOnly, setFavoritesOnly] = useState(stored.favoritesOnly);
 
 	const toggle = <T,>(arr: T[], val: T, set: (v: T[]) => void) => {
 		if (arr.includes(val)) set(arr.filter((x) => x !== val));
@@ -90,6 +90,7 @@ export default function FilterScreen() {
 			surfaces,
 			superHalf,
 			majors,
+			favoritesOnly,
 		});
 		router.back();
 	};
@@ -104,6 +105,7 @@ export default function FilterScreen() {
 		setSurfaces([]);
 		setSuperHalf(false);
 		setMajors(false);
+		setFavoritesOnly(false);
 		router.back();
 	};
 
@@ -170,6 +172,12 @@ export default function FilterScreen() {
 					<View style={styles.pillRow}>
 						<Pill active={superHalf} label="SuperHalf" onPress={() => setSuperHalf(!superHalf)} />
 						<Pill active={majors} label="Majors" onPress={() => setMajors(!majors)} />
+					</View>
+
+					{/* Favorites */}
+					<Text style={styles.section}>Favorites</Text>
+					<View style={styles.pillRow}>
+						<Pill active={favoritesOnly} label="Favorites only" onPress={() => setFavoritesOnly(!favoritesOnly)} />
 					</View>
 
 					{/* Actions */}
