@@ -59,3 +59,9 @@ export async function getFeaturedCardId(userId: string): Promise<string | null> 
 	if (error || !data) return null;
 	return data.featured_card_id;
 }
+
+export async function unsetFeaturedCard(userId: string): Promise<boolean> {
+	const { error } = await supabase.from("profiles").update({ featured_card_id: null }).eq("id", userId);
+	if (error) console.error("Error unsetting featured card:", error);
+	return !error;
+}
