@@ -4,10 +4,10 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
-import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard } from "@/lib/museum";
+import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unsetFeaturedCard } from "@/lib/museum";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, Lock, Menu, Star, User, X } from "lucide-react-native";
+import { Check, ListFilter, Lock, Star, User, X } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -68,8 +68,15 @@ export default function Museum() {
 
 	const handleSetFeatured = async () => {
 		if (!userId || !expandedCard) return;
-		const ok = await setFeaturedCard(userId, expandedCard.id);
-		if (ok) setFeaturedId(expandedCard.id);
+		if (isExpandedFeatured) {
+			// Already featured - unfeature it
+			const ok = await unsetFeaturedCard(userId);
+			if (ok) setFeaturedId(null);
+		} else {
+			// Set as featured
+			const ok = await setFeaturedCard(userId, expandedCard.id);
+			if (ok) setFeaturedId(expandedCard.id);
+		}
 	};
 
 	const expandedImage = expandedCard ? resolveCardImage(expandedCard) : null;
@@ -87,7 +94,7 @@ export default function Museum() {
 						}
 						right={
 							<HeaderButton variant="primary">
-								<Menu size={20} color={Colors.white} strokeWidth={2} />
+								<ListFilter size={20} color={Colors.white} strokeWidth={2} />
 							</HeaderButton>
 						}
 					/>
@@ -213,7 +220,7 @@ export default function Museum() {
 							</ScrollView>
 
 							<View style={styles.expandedButtonWrap}>
-								<Pressable style={[styles.featuredBtn, isExpandedFeatured && styles.featuredBtnActive]} onPress={handleSetFeatured} disabled={isExpandedFeatured}>
+								<Pressable style={[styles.featuredBtn, isExpandedFeatured && styles.featuredBtnActive]} onPress={handleSetFeatured}>
 									{isExpandedFeatured ? <Check size={18} color={Colors.white} strokeWidth={2.6} /> : <Star size={18} color={Colors.white} strokeWidth={2.4} />}
 									<Text style={styles.featuredBtnText}>{isExpandedFeatured ? "Featured on profile" : "Set as featured"}</Text>
 								</Pressable>
