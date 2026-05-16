@@ -19,15 +19,21 @@ export type MuseumCard = {
 };
 
 export async function fetchMuseumCards(userId: string): Promise<MuseumCard[]> {
-	const { data: allCards, error: cardsError } = await supabase.from("cards").select("*, race:races(id, name, city, country, country_code, continent)");
+	const { data: allCards, error: cardsError } = await supabase.from("cards").select("id, qr_code, rarity, creature_name, creature_image_url, race:races(id, name, city, country, country_code, continent)");
 
-	if (cardsError || !allCards) return [];
+	if (cardsError) {
+		console.error("Error fetching cards:", cardsError);
+		return [];
+	}
+	if (!allCards) return [];
 
-	const { data: userCards } = await supabase.from("user_cards").select("card_id, created_at").eq("user_id", userId);
+	const { data: userCards, error: ucError } = await supabase.from("user_cards").select("card_id, scanned_at").eq("user_id", userId);
+
+	if (ucError) console.error("Error fetching user_cards:", ucError);
 
 	const unlockedMap = new Map<string, string>();
 	(userCards ?? []).forEach((uc: any) => {
-		unlockedMap.set(uc.card_id, uc.created_at);
+		unlockedMap.set(uc.card_id, uc.scanned_at);
 	});
 
 	return (allCards as any[]).map((c) => ({
@@ -40,4 +46,16 @@ export async function fetchMuseumCards(userId: string): Promise<MuseumCard[]> {
 		unlocked: unlockedMap.has(c.id),
 		unlocked_at: unlockedMap.get(c.id) ?? null,
 	}));
+}
+
+export async function setFeaturedCard(userId: string, cardId: string): Promise<boolean> {
+	const { error } = await supabase.from("profiles").update({ featured_card_id: cardId }).eq("id", userId);
+	if (error) console.error("Error setting featured card:", error);
+	return !error;
+}
+
+export async function getFeaturedCardId(userId: string): Promise<string | null> {
+	const { data, error } = await supabase.from("profiles").select("featured_card_id").eq("id", userId).maybeSingle();
+	if (error || !data) return null;
+	return data.featured_card_id;
 }
