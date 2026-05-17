@@ -33,3 +33,29 @@ export function timeAgo(iso: string): string {
 	const minutes = Math.floor(diff / 60000);
 	return `${minutes}min ago`;
 }
+
+export type SuggestedUser = {
+	id: string;
+	display_name: string;
+	avatar_url: string | null;
+	is_following: boolean;
+};
+
+export async function fetchSuggestedUsers(currentUserId: string): Promise<SuggestedUser[]> {
+	const { data: alreadyFollowing } = await supabase.from("follows").select("following_id").eq("follower_id", currentUserId);
+	const followingIds = (alreadyFollowing ?? []).map((f) => f.following_id);
+	followingIds.push(currentUserId); // don't suggest yourself
+
+	let query = supabase.from("profiles").select("id, display_name, avatar_url").limit(10);
+	if (followingIds.length > 0) query = query.not("id", "in", `(${followingIds.join(",")})`);
+
+	const { data, error } = await query;
+	if (error || !data) return [];
+
+	return data.map((p: any) => ({
+		id: p.id,
+		display_name: p.display_name ?? "Anonymous",
+		avatar_url: p.avatar_url,
+		is_following: false,
+	}));
+}

@@ -85,7 +85,7 @@ export default function Community() {
 					{/* Suggested Challenges */}
 					<View style={styles.section}>
 						<View style={styles.sectionHeader}>
-							<Text style={styles.sectionTitle}>SUGGESTED CHALLENGES</Text>
+							<Text style={styles.sectionHeaderTitle}>SUGGESTED CHALLENGES</Text>
 							<Pressable style={styles.createBtn} onPress={() => router.push("/create-challenge" as any)}>
 								<Plus size={14} color={Colors.white} strokeWidth={2.6} />
 								<Text style={styles.createBtnText}>Create</Text>
@@ -188,6 +188,12 @@ const styles = StyleSheet.create({
 
 	section: { marginTop: Spacing.lg, marginBottom: Spacing.lg },
 	sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+	sectionHeaderTitle: {
+		fontFamily: Fonts.display,
+		fontStyle: "italic",
+		fontSize: 20,
+		color: Colors.white,
+	},
 	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 20, color: Colors.white, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
 	createBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: Colors.secundaire, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
 	createBtnText: { fontFamily: Fonts.bodyBold, fontSize: 12, fontWeight: "800", color: Colors.white },
