@@ -1,0 +1,61 @@
+import { supabase } from "@/lib/supabase";
+
+export type ActivityItem = {
+	id: string;
+	user: { display_name: string; avatar_url: string | null };
+	action_type: "scanned" | "challenged" | "joined_race";
+	race?: { name: string; city: string; country: string } | null;
+	created_at: string;
+	is_mock: boolean;
+};
+
+export async function fetchCommunityFeed(): Promise<ActivityItem[]> {
+	const { data, error } = await supabase.from("mock_activity").select("id, action_type, created_at, user:mock_users(display_name, avatar_url), race:races(name, city, country)").order("created_at", { ascending: false }).limit(20);
+
+	if (error || !data) return [];
+
+	return (data as any[]).map((a) => ({
+		id: a.id,
+		user: a.user,
+		action_type: a.action_type,
+		race: a.race,
+		created_at: a.created_at,
+		is_mock: true,
+	}));
+}
+
+export function timeAgo(iso: string): string {
+	const diff = Date.now() - new Date(iso).getTime();
+	const hours = Math.floor(diff / 3600000);
+	const days = Math.floor(hours / 24);
+	if (days > 0) return `${days}d ago`;
+	if (hours > 0) return `${hours}h ago`;
+	const minutes = Math.floor(diff / 60000);
+	return `${minutes}min ago`;
+}
+
+export type SuggestedUser = {
+	id: string;
+	display_name: string;
+	avatar_url: string | null;
+	is_following: boolean;
+};
+
+export async function fetchSuggestedUsers(currentUserId: string): Promise<SuggestedUser[]> {
+	const { data: alreadyFollowing } = await supabase.from("follows").select("following_id").eq("follower_id", currentUserId);
+	const followingIds = (alreadyFollowing ?? []).map((f) => f.following_id);
+	followingIds.push(currentUserId); // don't suggest yourself
+
+	let query = supabase.from("profiles").select("id, display_name, avatar_url").limit(10);
+	if (followingIds.length > 0) query = query.not("id", "in", `(${followingIds.join(",")})`);
+
+	const { data, error } = await query;
+	if (error || !data) return [];
+
+	return data.map((p: any) => ({
+		id: p.id,
+		display_name: p.display_name ?? "Anonymous",
+		avatar_url: p.avatar_url,
+		is_following: false,
+	}));
+}
