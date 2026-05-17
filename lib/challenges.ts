@@ -61,3 +61,44 @@ export function daysLeft(deadline: string | null): string {
 	if (days === 0) return "Last day";
 	return `${days} days left`;
 }
+
+export async function createChallenge(params: {
+	created_by: string;
+	type: "1v1_race" | "territory" | "collection";
+	title: string;
+	description?: string;
+	target?: any;
+	deadline?: string | null;
+	visibility?: "everyone" | "friends" | "close_friends";
+	challenged_user_ids?: string[];
+}): Promise<string | null> {
+	const { data, error } = await supabase
+		.from("challenges")
+		.insert({
+			created_by: params.created_by,
+			type: params.type,
+			title: params.title,
+			description: params.description,
+			target: params.target ?? {},
+			deadline: params.deadline,
+			visibility: params.visibility ?? "everyone",
+			challenged_user_ids: params.challenged_user_ids ?? [],
+		})
+		.select("id")
+		.single();
+
+	if (error || !data) {
+		console.error("Error creating challenge:", error);
+		return null;
+	}
+
+	// Auto-join creator
+	await supabase.from("challenge_participants").insert({ challenge_id: data.id, user_id: params.created_by });
+
+	return data.id;
+}
+
+export async function fetchChallengeParticipants(challengeId: string) {
+	const { data } = await supabase.from("challenge_participants").select("user_id, profile:profiles!user_id(display_name, avatar_url)").eq("challenge_id", challengeId).limit(5);
+	return (data ?? []).map((d: any) => d.profile);
+}
