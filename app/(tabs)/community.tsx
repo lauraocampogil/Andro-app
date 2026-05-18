@@ -133,15 +133,22 @@ export default function Community() {
 							<Text style={styles.sectionTitle}>PEOPLE TO FOLLOW</Text>
 							<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.usersRow}>
 								{suggestedUsers.map((u) => (
-									<View key={u.id} style={styles.userCard}>
+									<Pressable key={u.id} style={styles.userCard} onPress={() => router.push(`/user/${u.id}` as any)}>
 										<View style={styles.userAvatar}>{u.avatar_url ? <Image source={{ uri: u.avatar_url }} style={styles.userAvatarImg} contentFit="cover" /> : <View style={[styles.userAvatarImg, { backgroundColor: Colors.secundaire }]} />}</View>
 										<Text style={styles.userName} numberOfLines={1}>
 											{u.display_name}
 										</Text>
-										<Pressable style={[styles.followBtn, u.is_following && styles.followBtnActive]} onPress={() => !u.is_following && handleFollow(u.id)} disabled={u.is_following}>
+										<Pressable
+											style={[styles.followBtn, u.is_following && styles.followBtnActive]}
+											onPress={(e) => {
+												e.stopPropagation?.();
+												!u.is_following && handleFollow(u.id);
+											}}
+											disabled={u.is_following}
+										>
 											<Text style={styles.followBtnText}>{u.is_following ? "Following" : "Follow"}</Text>
 										</Pressable>
-									</View>
+									</Pressable>
 								))}
 							</ScrollView>
 						</View>
@@ -156,24 +163,28 @@ export default function Community() {
 						) : feed.length === 0 ? (
 							<Text style={styles.muted}>Follow people to see their activity here.</Text>
 						) : (
-							feed.map((item) => (
-								<View key={item.id} style={styles.feedCard}>
-									<View style={styles.feedHeader}>
-										<View style={styles.feedAvatar}>
-											{item.user.avatar_url ? <Image source={{ uri: item.user.avatar_url }} style={styles.feedAvatarImg} contentFit="cover" /> : <View style={[styles.feedAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+							feed.map((item) => {
+								const realUserId = (item as any).user_id;
+								const Wrapper: any = realUserId ? Pressable : View;
+								return (
+									<Wrapper key={item.id} style={styles.feedCard} {...(realUserId && { onPress: () => router.push(`/user/${realUserId}` as any) })}>
+										<View style={styles.feedHeader}>
+											<View style={styles.feedAvatar}>
+												{item.user.avatar_url ? <Image source={{ uri: item.user.avatar_url }} style={styles.feedAvatarImg} contentFit="cover" /> : <View style={[styles.feedAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+											</View>
+											<View style={{ flex: 1 }}>
+												<Text style={styles.feedUserName}>{item.user.display_name}</Text>
+												<Text style={styles.feedTime}>{timeAgo(item.created_at)}</Text>
+											</View>
 										</View>
-										<View style={{ flex: 1 }}>
-											<Text style={styles.feedUserName}>{item.user.display_name}</Text>
-											<Text style={styles.feedTime}>{timeAgo(item.created_at)}</Text>
-										</View>
-									</View>
-									<Text style={styles.feedAction}>
-										{item.action_type === "scanned" && `Scanned: ${item.race?.name ?? "a race"}`}
-										{item.action_type === "joined_race" && `Joined: ${item.race?.name ?? "a race"}`}
-										{item.action_type === "challenged" && `Challenged someone`}
-									</Text>
-								</View>
-							))
+										<Text style={styles.feedAction}>
+											{item.action_type === "scanned" && `Scanned: ${item.race?.name ?? "a race"}`}
+											{item.action_type === "joined_race" && `Joined: ${item.race?.name ?? "a race"}`}
+											{item.action_type === "challenged" && `Challenged someone`}
+										</Text>
+									</Wrapper>
+								);
+							})
 						)}
 					</View>
 				</ScrollView>
