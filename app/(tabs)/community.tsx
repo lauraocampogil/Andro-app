@@ -31,7 +31,7 @@ export default function Community() {
 			let cancelled = false;
 			(async () => {
 				setLoading(true);
-				const [f, s, u] = await Promise.all([fetchCommunityFeed(), fetchSuggestedChallenges(userId), fetchSuggestedUsers(userId)]);
+				const [f, s, u] = await Promise.all([fetchCommunityFeed(userId), fetchSuggestedChallenges(userId), fetchSuggestedUsers(userId)]);
 				if (!cancelled) {
 					setFeed(f);
 					setSuggested(s);
@@ -163,28 +163,47 @@ export default function Community() {
 						) : feed.length === 0 ? (
 							<Text style={styles.muted}>Follow people to see their activity here.</Text>
 						) : (
-							feed.map((item) => {
-								const realUserId = (item as any).user_id;
-								const Wrapper: any = realUserId ? Pressable : View;
-								return (
-									<Wrapper key={item.id} style={styles.feedCard} {...(realUserId && { onPress: () => router.push(`/user/${realUserId}` as any) })}>
-										<View style={styles.feedHeader}>
-											<View style={styles.feedAvatar}>
-												{item.user.avatar_url ? <Image source={{ uri: item.user.avatar_url }} style={styles.feedAvatarImg} contentFit="cover" /> : <View style={[styles.feedAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-											</View>
-											<View style={{ flex: 1 }}>
-												<Text style={styles.feedUserName}>{item.user.display_name}</Text>
-												<Text style={styles.feedTime}>{timeAgo(item.created_at)}</Text>
-											</View>
+							feed.map((item) => (
+								<Pressable key={item.id} style={styles.feedCard} onPress={() => router.push(`/user/${item.user_id}` as any)}>
+									<View style={styles.feedHeader}>
+										<View style={styles.feedAvatar}>
+											{item.user?.avatar_url ? <Image source={{ uri: item.user.avatar_url }} style={styles.feedAvatarImg} contentFit="cover" /> : <View style={[styles.feedAvatarImg, { backgroundColor: Colors.secundaire }]} />}
 										</View>
-										<Text style={styles.feedAction}>
-											{item.action_type === "scanned" && `Scanned: ${item.race?.name ?? "a race"}`}
-											{item.action_type === "joined_race" && `Joined: ${item.race?.name ?? "a race"}`}
-											{item.action_type === "challenged" && `Challenged someone`}
-										</Text>
-									</Wrapper>
-								);
-							})
+										<View style={{ flex: 1 }}>
+											<Text style={styles.feedUserName}>{item.user?.display_name ?? "Someone"}</Text>
+											<Text style={styles.feedTime}>{timeAgo(item.created_at)}</Text>
+										</View>
+									</View>
+									<Text style={styles.feedAction}>
+										{item.action_type === "scanned" && (
+											<>
+												Unlocked <Text style={styles.feedHighlight}>{item.card?.creature_name ?? "a new card"}</Text>
+												{item.race ? ` at ${item.race.name}` : ""}
+											</>
+										)}
+										{item.action_type === "joined_race" && (
+											<>
+												Joined <Text style={styles.feedHighlight}>{item.race?.name ?? "a race"}</Text>
+											</>
+										)}
+										{item.action_type === "challenged" && (
+											<>
+												Joined the challenge <Text style={styles.feedHighlight}>{item.challenge?.title ?? ""}</Text>
+											</>
+										)}
+										{item.action_type === "followed" && (
+											<>
+												Started following <Text style={styles.feedHighlight}>{item.target_user?.display_name ?? "someone"}</Text>
+											</>
+										)}
+										{item.action_type === "card_featured" && (
+											<>
+												Featured <Text style={styles.feedHighlight}>{item.card?.creature_name ?? "a card"}</Text> on their profile
+											</>
+										)}
+									</Text>
+								</Pressable>
+							))
 						)}
 					</View>
 				</ScrollView>
@@ -237,6 +256,7 @@ const styles = StyleSheet.create({
 	feedUserName: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.ink },
 	feedTime: { fontFamily: Fonts.body, fontSize: 11, color: Colors.ink50, marginTop: 2 },
 	feedAction: { fontFamily: Fonts.body, fontSize: 13, color: Colors.ink70 },
+	feedHighlight: { fontFamily: Fonts.bodyBold, fontWeight: "800", color: Colors.ink },
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.base },
 });
