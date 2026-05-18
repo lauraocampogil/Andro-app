@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
 	heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 	cityPill: { backgroundColor: Colors.white, paddingHorizontal: 18, paddingVertical: 12, borderRadius: Radius.pill },
 	cityText: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 15, color: Colors.ink, letterSpacing: 0 },
-	closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.ink, alignItems: "center", justifyContent: "center" },
+	closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	zoomBtn: {
 		position: "absolute",
 		right: Spacing.lg,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
 		width: 44,
 		height: 44,
 		borderRadius: 22,
-		backgroundColor: Colors.white30,
+		backgroundColor: Colors.white15,
 		alignItems: "center",
 		justifyContent: "center",
 	},

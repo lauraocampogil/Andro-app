@@ -6,9 +6,10 @@ import { useAuth } from "@/lib/auth";
 import { Challenge, daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge } from "@/lib/challenges";
 import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, SuggestedUser, timeAgo } from "@/lib/community";
 import { followUser } from "@/lib/follows";
+import { countUnreadNotifications } from "@/lib/notifications";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Globe, Plus, Search, Settings } from "lucide-react-native";
+import { Bell, Globe, Plus, Search, Settings } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -70,14 +71,21 @@ export default function Community() {
 				<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
 					<ScreenHeader
 						left={
-							<HeaderButton onPress={() => router.push("/settings" as any)}>
-								<Settings size={20} color={Colors.ink} strokeWidth={2} />
-							</HeaderButton>
+							<View style={{ flexDirection: "row", gap: 8 }}>
+								<HeaderButton onPress={() => router.push("/settings" as any)}>
+									<Settings size={20} color={Colors.ink} strokeWidth={2} />
+								</HeaderButton>
+							</View>
 						}
 						center={
 							<View style={styles.searchBox}>
 								<Search size={18} color={Colors.white70} strokeWidth={2.2} />
 								<TextInput value={search} onChangeText={setSearch} placeholder="Search races, people..." placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
+							</View>
+						}
+						right={
+							<View style={{ flexDirection: "row", gap: 8 }}>
+								<NotifBadgeButton onPress={() => router.push("/notifications" as any)} />
 							</View>
 						}
 					/>
@@ -105,7 +113,24 @@ export default function Community() {
 											<Text style={styles.challengeDeadline}>{daysLeft(c.deadline)}</Text>
 										</View>
 										{c.description && <Text style={styles.challengeDesc}>{c.description}</Text>}
-										<Text style={styles.challengeMeta}>{c.participants_count ?? 0} runners participating</Text>
+										<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+											{participants.length > 0 ? (
+												<>
+													<View style={styles.avatarsRow}>
+														{participants.slice(0, 5).map((p, i) => (
+															<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
+																{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+															</View>
+														))}
+													</View>
+													<Text style={[styles.challengeMeta, { marginLeft: 8, marginBottom: 0 }]}>
+														{c.participants_count} {c.participants_count === 1 ? "runner" : "runners"}
+													</Text>
+												</>
+											) : (
+												<Text style={styles.challengeMeta}>No runners yet</Text>
+											)}
+										</View>
 
 										{/* Friend avatars */}
 										{participants.length > 0 && (
@@ -209,6 +234,34 @@ export default function Community() {
 				</ScrollView>
 			</SafeAreaView>
 		</CosmicBackground>
+	);
+}
+
+function NotifBadgeButton({ onPress }: { onPress: () => void }) {
+	const { session } = useAuth();
+	const [count, setCount] = useState(0);
+
+	useFocusEffect(
+		useCallback(() => {
+			if (!session?.user?.id) return;
+			(async () => {
+				const c = await countUnreadNotifications(session.user.id);
+				setCount(c);
+			})();
+		}, [session?.user?.id]),
+	);
+
+	return (
+		<View>
+			<HeaderButton onPress={onPress}>
+				<Bell size={20} color={Colors.ink} strokeWidth={2} />
+			</HeaderButton>
+			{count > 0 && (
+				<View style={{ position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#FF5757", alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
+					<Text style={{ color: "#fff", fontSize: 11, fontWeight: "800", fontFamily: Fonts.bodyBold }}>{count > 9 ? "9+" : count}</Text>
+				</View>
+			)}
+		</View>
 	);
 }
 
