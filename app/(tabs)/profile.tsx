@@ -50,6 +50,8 @@ export default function Profile() {
 					getFollowingCount(userId),
 					fetchActiveChallenges(userId),
 				]);
+				console.log("[FOCUS] featured_card_id from DB:", fid);
+				console.log("[FOCUS] userId:", userId);
 				if (!cancelled) {
 					setProfile(prof ?? null);
 					setCards(museum);
@@ -89,11 +91,14 @@ export default function Profile() {
 
 	const handleSetFeatured = async () => {
 		if (!userId || !expandedCard) return;
+		console.log("[FEATURED] before:", { isExpandedFeatured, cardId: expandedCard.id, userId });
 		if (isExpandedFeatured) {
 			const ok = await unsetFeaturedCard(userId);
+			console.log("[FEATURED] unset result:", ok);
 			if (ok) setFeaturedId(null);
 		} else {
 			const ok = await setFeaturedCard(userId, expandedCard.id);
+			console.log("[FEATURED] set result:", ok);
 			if (ok) setFeaturedId(expandedCard.id);
 		}
 	};
@@ -228,7 +233,7 @@ export default function Profile() {
 			</Modal>
 
 			{/* Expanded card modal (full screen, opaque) */}
-			<Modal visible={expandedCard !== null} animationType="slide" onRequestClose={() => setExpandedCard(null)}>
+			<Modal visible={expandedCard !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setExpandedCard(null)}>
 				<View style={styles.expandedContainer}>
 					<CosmicBackground>
 						<SafeAreaView edges={["top", "bottom"]} style={{ flex: 1 }}>
@@ -243,7 +248,13 @@ export default function Profile() {
 							</View>
 
 							<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-								<View style={styles.expandedCardWrap}>{expandedImage && <Image source={expandedImage} style={styles.expandedCardImage} contentFit="contain" />}</View>
+								<View style={styles.expandedCardWrap}>
+									{expandedImage && (
+										<View style={styles.expandedCardClip}>
+											<Image source={expandedImage} style={styles.expandedCardImage} contentFit="cover" />
+										</View>
+									)}
+								</View>
 
 								<View style={styles.expandedFooter}>
 									<View style={styles.expandedRow}>
@@ -387,6 +398,13 @@ const styles = StyleSheet.create({
 	expandedCloseBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	expandedCardWrap: { alignItems: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm },
 	expandedCardImage: { width: "100%", aspectRatio: 3 / 4, borderRadius: Radius.lg, maxHeight: 440 },
+	expandedCardClip: {
+		width: "100%",
+		aspectRatio: 3 / 4,
+		borderRadius: Radius.lg,
+		overflow: "hidden",
+		maxHeight: 440,
+	},
 	expandedFooter: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: 8 },
 	expandedRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
 	expandedRowLabel: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70 },

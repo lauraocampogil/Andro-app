@@ -50,18 +50,27 @@ export async function fetchMuseumCards(userId: string): Promise<MuseumCard[]> {
 
 export async function setFeaturedCard(userId: string, cardId: string): Promise<boolean> {
 	const { error } = await supabase.from("profiles").update({ featured_card_id: cardId }).eq("id", userId);
-	if (error) console.error("Error setting featured card:", error);
-	return !error;
+	if (error) {
+		console.error("setFeaturedCard error:", error);
+		return false;
+	}
+	return true;
 }
 
 export async function getFeaturedCardId(userId: string): Promise<string | null> {
 	const { data, error } = await supabase.from("profiles").select("featured_card_id").eq("id", userId).maybeSingle();
-	if (error || !data) return null;
-	return data.featured_card_id;
+	if (error) {
+		console.error("getFeaturedCardId error:", error);
+		return null;
+	}
+	return data?.featured_card_id ?? null;
 }
 
 export async function unsetFeaturedCard(userId: string): Promise<boolean> {
 	const { error } = await supabase.from("profiles").update({ featured_card_id: null }).eq("id", userId);
-	if (error) console.error("Error unsetting featured card:", error);
-	return !error;
+	if (error) {
+		console.error("unsetFeaturedCard error:", error);
+		return false;
+	}
+	return true;
 }
