@@ -80,7 +80,7 @@ export default function Community() {
 						center={
 							<View style={styles.searchBox}>
 								<Search size={18} color={Colors.white70} strokeWidth={2.2} />
-								<TextInput value={search} onChangeText={setSearch} placeholder="Search races, people..." placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
+								<TextInput value={search} onChangeText={setSearch} placeholder="Search people, challenges..." placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
 							</View>
 						}
 						right={
