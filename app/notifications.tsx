@@ -8,6 +8,7 @@ import { Check, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "@/lib/supabase";
 
 function timeAgo(iso: string): string {
 	const diff = Date.now() - new Date(iso).getTime();
@@ -50,6 +51,14 @@ export default function Notifications() {
 		if (!n.invitation_id) return;
 		await respondToInvitation(n.invitation_id, status);
 		setNotifs((prev) => prev.filter((x) => x.id !== n.id));
+
+		// If accepted a marathon battle, redirect to the race
+		if (status === "accepted" && n.challenge?.id) {
+			const { data: ch } = await supabase.from("challenges").select("type, race_id").eq("id", n.challenge.id).maybeSingle();
+			if (ch?.type === "marathon_battle" && ch?.race_id) {
+				router.push(`/race/${ch.race_id}` as any);
+			}
+		}
 	};
 
 	return (
