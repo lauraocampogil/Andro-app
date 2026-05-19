@@ -1,13 +1,16 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
+import { pickImageFromLibrary, takePhoto, uploadAvatar } from "@/lib/avatar";
 import { getCloseFriendProfiles, removeCloseFriend } from "@/lib/closeFriends";
+import { getCurrentLocation, requestLocationPermission, saveUserLocation } from "@/lib/location";
 import { ChallengeVisibility, getUserSettings, updateChallengeVisibility, updateSetting, UserSettings } from "@/lib/settings";
+import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Bell, Check, ChevronRight, Globe, LogOut, MapPin, UserPlus, Users, UserX, Volume2, X } from "lucide-react-native";
+import { Bell, Camera, Check, ChevronRight, Globe, LogOut, MapPin, UserPlus, Users, UserX, Volume2, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const VISIBILITY_OPTIONS: { value: ChallengeVisibility; label: string; description: string; Icon: any }[] = [
@@ -30,6 +33,9 @@ export default function Settings() {
 	const [settings, setSettings] = useState<UserSettings | null>(null);
 	const [closeFriends, setCloseFriends] = useState<any[]>([]);
 
+	const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+	const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
 	useFocusEffect(
 		useCallback(() => {
 			if (!userId) return;
@@ -38,6 +44,9 @@ export default function Settings() {
 				setSettings(s);
 				const cf = await getCloseFriendProfiles(userId);
 				setCloseFriends(cf);
+
+				const { data: prof } = await supabase.from("profiles").select("avatar_url").eq("id", userId).maybeSingle();
+				setAvatarUrl(prof?.avatar_url ?? null);
 			})();
 		}, [userId]),
 	);
@@ -97,6 +106,77 @@ export default function Settings() {
 		]);
 	};
 
+	const handlePickAvatar = () => {
+		const options = ["Take Photo", "Choose from Library", "Cancel"];
+
+		if (Platform.OS === "ios") {
+			ActionSheetIOS.showActionSheetWithOptions({ options, cancelButtonIndex: 2 }, async (idx) => {
+				if (idx === 0) await doTakePhoto();
+				if (idx === 1) await doPickFromLibrary();
+			});
+		} else {
+			Alert.alert("Profile picture", "Choose source", [
+				{ text: "Take Photo", onPress: doTakePhoto },
+				{ text: "Choose from Library", onPress: doPickFromLibrary },
+				{ text: "Cancel", style: "cancel" },
+			]);
+		}
+	};
+
+	const doTakePhoto = async () => {
+		if (!userId) return;
+		const uri = await takePhoto();
+		if (uri) await processUpload(uri);
+	};
+
+	const doPickFromLibrary = async () => {
+		if (!userId) return;
+		const uri = await pickImageFromLibrary();
+		if (uri) await processUpload(uri);
+	};
+
+	const processUpload = async (uri: string) => {
+		if (!userId) return;
+		setUploadingAvatar(true);
+		const newUrl = await uploadAvatar(userId, uri);
+		setUploadingAvatar(false);
+		if (newUrl) {
+			setAvatarUrl(newUrl);
+		} else {
+			Alert.alert("Error", "Could not upload photo. Try again.");
+		}
+	};
+
+	const handleLocationToggle = async (enabled: boolean) => {
+		if (!userId || !settings) return;
+
+		if (enabled) {
+			const granted = await requestLocationPermission();
+			if (!granted) {
+				Alert.alert("Location permission required", "Please enable location in your device settings to use this feature.");
+				return;
+			}
+			// Fetch and save current location right away
+			const loc = await getCurrentLocation(settings.location_precision === "off" ? "city" : settings.location_precision);
+			if (loc) await saveUserLocation(userId, loc);
+		}
+
+		setSettings({ ...settings, location_enabled: enabled });
+		await updateSetting(userId, "location_enabled", enabled);
+	};
+
+	const handleLocationPrecision = async (precision: "precise" | "city" | "off") => {
+		if (!userId || !settings) return;
+		setSettings({ ...settings, location_precision: precision });
+		await updateSetting(userId, "location_precision", precision);
+
+		// Refresh location with new precision
+		if (settings.location_enabled && precision !== "off") {
+			const loc = await getCurrentLocation(precision);
+			if (loc) await saveUserLocation(userId, loc);
+		}
+	};
+
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
@@ -109,6 +189,17 @@ export default function Settings() {
 				</View>
 
 				<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+					{/* Profile picture */}
+					<View style={styles.profilePicSection}>
+						<Pressable style={styles.profilePicWrap} onPress={handlePickAvatar} disabled={uploadingAvatar}>
+							{avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.profilePic} contentFit="cover" /> : <View style={[styles.profilePic, { backgroundColor: Colors.secundaire }]} />}
+							<View style={styles.profilePicOverlay}>
+								<Camera size={16} color={Colors.white} strokeWidth={2.4} />
+							</View>
+						</Pressable>
+						<Text style={styles.profilePicLabel}>{uploadingAvatar ? "Uploading..." : "Tap to change photo"}</Text>
+					</View>
+
 					{/* Account */}
 					<Text style={styles.sectionTitle}>ACCOUNT</Text>
 					<View style={styles.box}>
@@ -167,7 +258,7 @@ export default function Settings() {
 								<Text style={styles.rowLabel}>Share location</Text>
 								<Text style={styles.rowSub}>Used for nearby races and Territory mode</Text>
 							</View>
-							<Switch value={settings.location_enabled} onValueChange={(v) => handleToggle("location_enabled", v)} trackColor={{ false: Colors.white15, true: Colors.secundaire }} thumbColor={Colors.white} />
+							<Switch value={settings.location_enabled} onValueChange={handleLocationToggle} trackColor={{ false: Colors.white15, true: Colors.secundaire }} thumbColor={Colors.white} />
 						</View>
 					</View>
 
@@ -178,7 +269,7 @@ export default function Settings() {
 								{LOCATION_OPTIONS.map((opt) => {
 									const active = settings.location_precision === opt.value;
 									return (
-										<Pressable key={opt.value} style={styles.optionRow} onPress={() => handleToggle("location_precision", opt.value)}>
+										<Pressable key={opt.value} style={styles.optionRow} onPress={() => handleLocationPrecision(opt.value)}>
 											<View style={{ flex: 1 }}>
 												<Text style={styles.rowLabel}>{opt.label}</Text>
 												<Text style={styles.rowSub}>{opt.description}</Text>
@@ -273,6 +364,42 @@ const styles = StyleSheet.create({
 	addCfText: { fontFamily: Fonts.bodyBold, fontSize: 13, color: Colors.white70 },
 
 	empty: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white50, paddingHorizontal: Spacing.lg, textAlign: "center", paddingVertical: Spacing.lg },
+
+	profilePicSection: {
+		alignItems: "center",
+		paddingVertical: Spacing.lg,
+	},
+	profilePicWrap: {
+		width: 100,
+		height: 100,
+		position: "relative",
+		marginBottom: Spacing.sm,
+	},
+	profilePic: {
+		width: 100,
+		height: 100,
+		borderRadius: 50,
+		borderWidth: 3,
+		borderColor: Colors.secundaire,
+	},
+	profilePicOverlay: {
+		position: "absolute",
+		bottom: -4,
+		right: -4,
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: Colors.secundaire,
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 2,
+		borderColor: Colors.white30,
+	},
+	profilePicLabel: {
+		fontFamily: Fonts.body,
+		fontSize: 13,
+		color: Colors.white70,
+	},
 
 	cfItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
 	cfAvatar: { width: 40, height: 40, borderRadius: 20, overflow: "hidden" },
