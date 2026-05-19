@@ -45,12 +45,13 @@ export async function fetchSuggestedChallenges(userId: string): Promise<Challeng
 }
 
 export async function fetchChallengeParticipants(challengeId: string) {
-	const { data: participants } = await supabase.from("challenge_participants").select("user_id").eq("challenge_id", challengeId).limit(5);
+	const { data: participants } = await supabase.from("challenge_participants").select("user_id").eq("challenge_id", challengeId);
 
 	if (!participants || participants.length === 0) return [];
 
-	const userIds = participants.map((p) => p.user_id);
-	const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds);
+	const uniqueIds = Array.from(new Set(participants.map((p) => p.user_id)));
+
+	const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", uniqueIds.slice(0, 5));
 
 	return profiles ?? [];
 }
