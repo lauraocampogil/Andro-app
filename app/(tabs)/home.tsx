@@ -9,7 +9,7 @@ import { hasContinentImage } from "@/lib/continentAssets";
 import { useRacesStore } from "@/lib/racesStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ListFilter, Maximize2, User } from "lucide-react-native";
+import { Maximize2, User } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -51,11 +51,6 @@ export default function Home() {
 					left={
 						<HeaderButton onPress={resetAll}>
 							<User size={20} color={Colors.ink} strokeWidth={2} />
-						</HeaderButton>
-					}
-					right={
-						<HeaderButton variant="primary">
-							<ListFilter size={20} color={Colors.white} strokeWidth={2} />
 						</HeaderButton>
 					}
 				/>
