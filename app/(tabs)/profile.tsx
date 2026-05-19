@@ -10,7 +10,7 @@ import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unset
 import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, ChevronRight, Lock, LogOut, Menu, Star, X } from "lucide-react-native";
+import { Check, ChevronRight, ListFilter, Lock, Settings, Star, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +31,13 @@ export default function Profile() {
 	const [challenges, setChallenges] = useState<Challenge[]>([]);
 	const [continent, setContinent] = useState("All");
 	const [loading, setLoading] = useState(true);
+
+	const [filterModalOpen, setFilterModalOpen] = useState(false);
+	const [visibleSections, setVisibleSections] = useState({
+		featured: true,
+		challenges: true,
+		collection: true,
+	});
 
 	// Museum modal states
 	const [lockedModal, setLockedModal] = useState<MuseumCard | null>(null);
@@ -111,13 +118,13 @@ export default function Profile() {
 				<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
 					<ScreenHeader
 						left={
-							<HeaderButton onPress={() => signOut().then(() => router.replace("/(auth)/welcome" as any))}>
-								<LogOut size={20} color={Colors.ink} strokeWidth={2} />
+							<HeaderButton onPress={() => router.push("/settings" as any)}>
+								<Settings size={20} color={Colors.ink} strokeWidth={2} />
 							</HeaderButton>
 						}
 						right={
-							<HeaderButton variant="primary">
-								<Menu size={20} color={Colors.white} strokeWidth={2} />
+							<HeaderButton variant="primary" onPress={() => setFilterModalOpen(true)}>
+								<ListFilter size={20} color={Colors.white} strokeWidth={2} />
 							</HeaderButton>
 						}
 					/>
@@ -146,7 +153,7 @@ export default function Profile() {
 					</View>
 
 					{/* Featured card */}
-					{featuredCard && featuredImage && (
+					{visibleSections.featured && featuredCard && featuredImage && (
 						<View style={styles.featuredSection}>
 							<Text style={styles.sectionTitle}>FEATURED CARD</Text>
 							<Pressable onPress={() => setExpandedCard(featuredCard)} style={styles.featuredCard}>
@@ -163,7 +170,7 @@ export default function Profile() {
 					)}
 
 					{/* Active challenges */}
-					{challenges.length > 0 && (
+					{visibleSections.challenges && challenges.length > 0 && (
 						<View style={styles.section}>
 							<Text style={styles.sectionTitle}>ACTIVE CHALLENGES</Text>
 							{challenges.map((c) => (
@@ -185,31 +192,71 @@ export default function Profile() {
 					)}
 
 					{/* Collection */}
-					<View style={styles.section}>
-						<Text style={styles.sectionTitle}>MY COLLECTION</Text>
+					{visibleSections.collection && (
+						<View style={styles.section}>
+							<Text style={styles.sectionTitle}>MY COLLECTION</Text>
 
-						<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
-							{CONTINENTS.map((c) => (
-								<Pressable key={c} style={[styles.pill, continent === c && styles.pillActive]} onPress={() => setContinent(c)}>
-									<Text style={[styles.pillText, continent === c && styles.pillTextActive]}>{c}</Text>
-								</Pressable>
-							))}
-						</ScrollView>
-
-						{loading ? (
-							<Text style={styles.muted}>Loading...</Text>
-						) : filteredCards.length === 0 ? (
-							<Text style={styles.muted}>No cards in this continent yet.</Text>
-						) : (
-							<View style={styles.grid}>
-								{filteredCards.map((card) => (
-									<MuseumCardItem key={card.id} card={card} width={cardWidth} isFeatured={card.id === featuredId} onPress={() => handleCardPress(card)} />
+							<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
+								{CONTINENTS.map((c) => (
+									<Pressable key={c} style={[styles.pill, continent === c && styles.pillActive]} onPress={() => setContinent(c)}>
+										<Text style={[styles.pillText, continent === c && styles.pillTextActive]}>{c}</Text>
+									</Pressable>
 								))}
-							</View>
-						)}
-					</View>
+							</ScrollView>
+
+							{loading ? (
+								<Text style={styles.muted}>Loading...</Text>
+							) : filteredCards.length === 0 ? (
+								<Text style={styles.muted}>No cards in this continent yet.</Text>
+							) : (
+								<View style={styles.grid}>
+									{filteredCards.map((card) => (
+										<MuseumCardItem key={card.id} card={card} width={cardWidth} isFeatured={card.id === featuredId} onPress={() => handleCardPress(card)} />
+									))}
+								</View>
+							)}
+						</View>
+					)}
 				</ScrollView>
 			</SafeAreaView>
+
+			{/* Filter modal */}
+			<Modal visible={filterModalOpen} transparent animationType="fade" onRequestClose={() => setFilterModalOpen(false)}>
+				<Pressable style={styles.modalBackdrop} onPress={() => setFilterModalOpen(false)}>
+					<Pressable style={styles.filterCard} onPress={(e) => e.stopPropagation()}>
+						<View style={styles.filterHeader}>
+							<Text style={styles.filterTitle}>SHOW SECTIONS</Text>
+							<Pressable onPress={() => setFilterModalOpen(false)}>
+								<X size={20} color={Colors.white} strokeWidth={2.4} />
+							</Pressable>
+						</View>
+
+						<Pressable style={styles.filterRow} onPress={() => setVisibleSections((s) => ({ ...s, featured: !s.featured }))}>
+							<Text style={styles.filterRowText}>Featured Card</Text>
+							<View style={[styles.filterCheckbox, visibleSections.featured && styles.filterCheckboxActive]}>{visibleSections.featured && <Check size={14} color={Colors.white} strokeWidth={3} />}</View>
+						</Pressable>
+
+						<Pressable style={styles.filterRow} onPress={() => setVisibleSections((s) => ({ ...s, challenges: !s.challenges }))}>
+							<Text style={styles.filterRowText}>Active Challenges</Text>
+							<View style={[styles.filterCheckbox, visibleSections.challenges && styles.filterCheckboxActive]}>{visibleSections.challenges && <Check size={14} color={Colors.white} strokeWidth={3} />}</View>
+						</Pressable>
+
+						<Pressable style={styles.filterRow} onPress={() => setVisibleSections((s) => ({ ...s, collection: !s.collection }))}>
+							<Text style={styles.filterRowText}>My Collection</Text>
+							<View style={[styles.filterCheckbox, visibleSections.collection && styles.filterCheckboxActive]}>{visibleSections.collection && <Check size={14} color={Colors.white} strokeWidth={3} />}</View>
+						</Pressable>
+
+						<View style={styles.filterFooter}>
+							<Pressable style={styles.filterReset} onPress={() => setVisibleSections({ featured: true, challenges: true, collection: true })}>
+								<Text style={styles.filterResetText}>Reset</Text>
+							</Pressable>
+							<Pressable style={styles.filterApply} onPress={() => setFilterModalOpen(false)}>
+								<Text style={styles.filterApplyText}>Done</Text>
+							</Pressable>
+						</View>
+					</Pressable>
+				</Pressable>
+			</Modal>
 
 			{/* Locked card modal */}
 			<Modal visible={lockedModal !== null} transparent animationType="fade" onRequestClose={() => setLockedModal(null)}>
@@ -415,6 +462,85 @@ const styles = StyleSheet.create({
 	participantAvatarImg: { width: "100%", height: "100%" },
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingVertical: Spacing.lg, paddingHorizontal: Spacing.lg },
+
+	filterCard: {
+		width: 320,
+		backgroundColor: Colors.hoofdkleur,
+		borderRadius: Radius.xl,
+		borderWidth: 1,
+		borderColor: Colors.white15,
+		padding: Spacing.lg,
+	},
+	filterHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: Spacing.base,
+	},
+	filterTitle: {
+		fontFamily: Fonts.display,
+		fontStyle: "italic",
+		fontSize: 18,
+		color: Colors.white,
+		letterSpacing: 1,
+	},
+	filterRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingVertical: 14,
+		borderBottomWidth: 1,
+		borderBottomColor: Colors.white15,
+	},
+	filterRowText: {
+		fontFamily: Fonts.body,
+		fontSize: 15,
+		color: Colors.white,
+	},
+	filterCheckbox: {
+		width: 24,
+		height: 24,
+		borderRadius: 6,
+		borderWidth: 2,
+		borderColor: Colors.white30,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	filterCheckboxActive: {
+		backgroundColor: Colors.secundaire,
+		borderColor: Colors.secundaire,
+	},
+	filterFooter: {
+		flexDirection: "row",
+		gap: 10,
+		marginTop: Spacing.lg,
+	},
+	filterReset: {
+		flex: 1,
+		paddingVertical: 12,
+		borderRadius: Radius.pill,
+		backgroundColor: Colors.white15,
+		alignItems: "center",
+	},
+	filterResetText: {
+		fontFamily: Fonts.bodyBold,
+		fontSize: 14,
+		fontWeight: "800",
+		color: Colors.white,
+	},
+	filterApply: {
+		flex: 1,
+		paddingVertical: 12,
+		borderRadius: Radius.pill,
+		backgroundColor: Colors.secundaire,
+		alignItems: "center",
+	},
+	filterApplyText: {
+		fontFamily: Fonts.bodyBold,
+		fontSize: 14,
+		fontWeight: "800",
+		color: Colors.white,
+	},
 
 	// Locked modal
 	modalBackdrop: { flex: 1, backgroundColor: "rgba(4, 8, 26, 0.82)", alignItems: "center", justifyContent: "center" },
