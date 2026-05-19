@@ -4,14 +4,14 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
-import { Challenge, daysLeft, fetchActiveChallenges } from "@/lib/challenges";
+import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants } from "@/lib/challenges";
 import { getFollowersCount, getFollowingCount } from "@/lib/follows";
 import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unsetFeaturedCard } from "@/lib/museum";
 import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, Lock, LogOut, Menu, Star, X } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import { Check, ChevronRight, Lock, LogOut, Menu, Star, X } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -167,13 +167,19 @@ export default function Profile() {
 						<View style={styles.section}>
 							<Text style={styles.sectionTitle}>ACTIVE CHALLENGES</Text>
 							{challenges.map((c) => (
-								<View key={c.id} style={styles.challengeCard}>
-									<Text style={styles.challengeTitle}>{c.title}</Text>
-									<Text style={styles.challengeMeta}>{daysLeft(c.deadline)}</Text>
+								<Pressable key={c.id} style={styles.challengeCard} onPress={() => router.push(`/challenge/${c.id}` as any)}>
+									<View style={styles.challengeCardTop}>
+										<View style={{ flex: 1 }}>
+											<Text style={styles.challengeTitle}>{c.title}</Text>
+											<Text style={styles.challengeMeta}>{daysLeft(c.deadline)}</Text>
+										</View>
+										<ChevronRight size={20} color={Colors.ink70} strokeWidth={2.2} />
+									</View>
+									<ChallengeParticipantsRow challengeId={c.id} />
 									<View style={styles.progressBar}>
 										<View style={[styles.progressFill, { width: `${Math.min(100, (c.user_progress ?? 0) * 100)}%` }]} />
 									</View>
-								</View>
+								</Pressable>
 							))}
 						</View>
 					)}
@@ -330,6 +336,33 @@ function MuseumCardItem({ card, width, isFeatured, onPress }: { card: MuseumCard
 	);
 }
 
+function ChallengeParticipantsRow({ challengeId }: { challengeId: string }) {
+	const [participants, setParticipants] = useState<any[]>([]);
+	useEffect(() => {
+		(async () => {
+			const p = await fetchChallengeParticipants(challengeId);
+			setParticipants(p);
+		})();
+	}, [challengeId]);
+
+	if (participants.length === 0) return null;
+
+	return (
+		<View style={{ flexDirection: "row", alignItems: "center", marginVertical: 8 }}>
+			<View style={{ flexDirection: "row" }}>
+				{participants.slice(0, 5).map((p, i) => (
+					<View key={p.id} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
+						{p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+					</View>
+				))}
+			</View>
+			<Text style={{ marginLeft: 8, fontFamily: Fonts.body, fontSize: 12, color: Colors.ink70 }}>
+				{participants.length} {participants.length === 1 ? "runner" : "runners"}
+			</Text>
+		</View>
+	);
+}
+
 const styles = StyleSheet.create({
 	profileTop: { alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.xl },
 	avatar: { width: 96, height: 96, borderRadius: 48, overflow: "hidden", borderWidth: 3, borderColor: Colors.secundaire, marginBottom: Spacing.base },
@@ -376,6 +409,10 @@ const styles = StyleSheet.create({
 	featuredStar: { position: "absolute", top: 8, left: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: "#FFD15C", alignItems: "center", justifyContent: "center" },
 	cardName: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white, marginBottom: 2 },
 	cardLocation: { fontFamily: Fonts.body, fontSize: 11, color: Colors.white70 },
+
+	challengeCardTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+	participantAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: Colors.white, overflow: "hidden" },
+	participantAvatarImg: { width: "100%", height: "100%" },
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingVertical: Spacing.lg, paddingHorizontal: Spacing.lg },
 
