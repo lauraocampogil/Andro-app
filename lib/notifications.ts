@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 export type Notification = {
 	id: string;
-	type: "challenge_invite" | "challenge_accepted" | "challenge_declined" | "new_follower" | "race_reminder";
+	type: "challenge_invite" | "challenge_accepted" | "challenge_declined" | "new_follower" | "race_reminder" | "new_message";
 	from_user: { id: string; display_name: string; avatar_url: string | null } | null;
 	challenge: { id: string; title: string } | null;
 	invitation_id: string | null;
@@ -11,12 +11,7 @@ export type Notification = {
 };
 
 export async function fetchNotifications(userId: string): Promise<Notification[]> {
-	const { data, error } = await supabase
-		.from("notifications")
-		.select("id, type, from_user_id, challenge_id, invitation_id, read, created_at, challenge:challenges(id, title)")
-		.eq("user_id", userId)
-		.order("created_at", { ascending: false })
-		.limit(50);
+	const { data, error } = await supabase.from("notifications").select("id, type, from_user_id, challenge_id, invitation_id, read, created_at, challenge:challenges(id, title)").eq("user_id", userId).order("created_at", { ascending: false }).limit(50);
 
 	if (error || !data) return [];
 
@@ -36,11 +31,7 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
-	const { count } = await supabase
-		.from("notifications")
-		.select("*", { count: "exact", head: true })
-		.eq("user_id", userId)
-		.eq("read", false);
+	const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("read", false);
 	return count ?? 0;
 }
 
@@ -50,9 +41,6 @@ export async function markAsRead(notificationId: string): Promise<boolean> {
 }
 
 export async function respondToInvitation(invitationId: string, status: "accepted" | "declined"): Promise<boolean> {
-	const { error } = await supabase
-		.from("challenge_invitations")
-		.update({ status, responded_at: new Date().toISOString() })
-		.eq("id", invitationId);
+	const { error } = await supabase.from("challenge_invitations").update({ status, responded_at: new Date().toISOString() }).eq("id", invitationId);
 	return !error;
 }

@@ -2,13 +2,13 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { fetchNotifications, markAsRead, Notification, respondToInvitation } from "@/lib/notifications";
+import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "@/lib/supabase";
 
 function timeAgo(iso: string): string {
 	const diff = Date.now() - new Date(iso).getTime();
@@ -52,12 +52,22 @@ export default function Notifications() {
 		await respondToInvitation(n.invitation_id, status);
 		setNotifs((prev) => prev.filter((x) => x.id !== n.id));
 
-		// If accepted a marathon battle, redirect to the race
 		if (status === "accepted" && n.challenge?.id) {
 			const { data: ch } = await supabase.from("challenges").select("type, race_id").eq("id", n.challenge.id).maybeSingle();
 			if (ch?.type === "marathon_battle" && ch?.race_id) {
 				router.push(`/race/${ch.race_id}` as any);
 			}
+		}
+	};
+
+	const handleNotifTap = (n: Notification) => {
+		// Navigate based on notification type
+		if (n.type === "new_message" && n.challenge?.id) {
+			router.push(`/challenge/${n.challenge.id}` as any);
+		} else if (n.type === "challenge_accepted" || n.type === "challenge_declined") {
+			if (n.challenge?.id) router.push(`/challenge/${n.challenge.id}` as any);
+		} else if (n.from_user) {
+			router.push(`/user/${n.from_user.id}` as any);
 		}
 	};
 
@@ -80,7 +90,7 @@ export default function Notifications() {
 					) : (
 						notifs.map((n) => (
 							<View key={n.id} style={[styles.card, !n.read && styles.cardUnread]}>
-								<Pressable style={styles.cardTop} onPress={() => n.from_user && router.push(`/user/${n.from_user.id}` as any)}>
+								<Pressable style={styles.cardTop} onPress={() => handleNotifTap(n)}>
 									<View style={styles.avatar}>
 										{n.from_user?.avatar_url ? <Image source={{ uri: n.from_user.avatar_url }} style={styles.avatarImg} contentFit="cover" /> : <View style={[styles.avatarImg, { backgroundColor: Colors.secundaire }]} />}
 									</View>
@@ -92,6 +102,7 @@ export default function Notifications() {
 											{n.type === "challenge_declined" && ` declined your challenge "${n.challenge?.title ?? ""}"`}
 											{n.type === "new_follower" && ` started following you`}
 											{n.type === "race_reminder" && ` race is coming up soon`}
+											{n.type === "new_message" && ` sent a message in "${n.challenge?.title ?? "a challenge"}"`}
 										</Text>
 										<Text style={styles.cardTime}>{timeAgo(n.created_at)}</Text>
 									</View>
