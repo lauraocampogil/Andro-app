@@ -8,6 +8,7 @@ export type UserSettings = {
 	notification_sound: boolean;
 	location_enabled: boolean;
 	location_precision: "precise" | "city" | "off";
+	account_private: boolean;
 };
 
 export async function getUserSettings(userId: string): Promise<UserSettings> {
@@ -18,6 +19,7 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
 		notification_sound: data?.notification_sound ?? true,
 		location_enabled: data?.location_enabled ?? false,
 		location_precision: data?.location_precision ?? "city",
+		account_private: data?.account_private ?? false,
 	};
 }
 

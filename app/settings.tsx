@@ -8,7 +8,7 @@ import { ChallengeVisibility, getUserSettings, updateChallengeVisibility, update
 import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Bell, Camera, Check, ChevronRight, Globe, LogOut, MapPin, UserPlus, Users, UserX, Volume2, X } from "lucide-react-native";
+import { Bell, Camera, Check, ChevronRight, Globe, Lock, LogOut, MapPin, UserPlus, Users, UserX, Volume2, X } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -213,6 +213,21 @@ export default function Settings() {
 							</View>
 							<ChevronRight size={18} color={Colors.white50} strokeWidth={2.2} />
 						</Pressable>
+					</View>
+
+					{/* Privacy */}
+					<Text style={styles.sectionTitle}>PRIVACY</Text>
+					<View style={styles.box}>
+						<View style={styles.row}>
+							<View style={[styles.rowIcon, { backgroundColor: Colors.secundaire }]}>
+								<Lock size={18} color={Colors.white} strokeWidth={2.4} />
+							</View>
+							<View style={{ flex: 1 }}>
+								<Text style={styles.rowLabel}>Private account</Text>
+								<Text style={styles.rowSub}>{settings.account_private ? "People must request to follow you" : "Anyone can follow you instantly"}</Text>
+							</View>
+							<Switch value={settings.account_private} onValueChange={(v) => handleToggle("account_private", v)} trackColor={{ false: Colors.white15, true: Colors.secundaire }} thumbColor={Colors.white} />
+						</View>
 					</View>
 
 					{/* Notifications */}
