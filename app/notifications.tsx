@@ -1,6 +1,7 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
+import { respondToFollowRequest } from "@/lib/followRequests";
 import { fetchNotifications, markAsRead, Notification, respondToInvitation } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
@@ -60,10 +61,15 @@ export default function Notifications() {
 		}
 	};
 
+	const handleFollowRequestResponse = async (n: Notification, status: "accepted" | "declined") => {
+		if (!n.follow_request_id) return;
+		await respondToFollowRequest(n.follow_request_id, status);
+		setNotifs((prev) => prev.filter((x) => x.id !== n.id));
+	};
+
 	const handleNotifTap = (n: Notification) => {
-		// Navigate based on notification type
 		if (n.type === "new_message" && n.challenge?.id) {
-			router.push(`/challenge/${n.challenge.id}` as any);
+			router.push({ pathname: `/challenge/${n.challenge.id}`, params: { tab: "chat" } } as any);
 		} else if (n.type === "challenge_accepted" || n.type === "challenge_declined") {
 			if (n.challenge?.id) router.push(`/challenge/${n.challenge.id}` as any);
 		} else if (n.from_user) {
@@ -103,6 +109,8 @@ export default function Notifications() {
 											{n.type === "new_follower" && ` started following you`}
 											{n.type === "race_reminder" && ` race is coming up soon`}
 											{n.type === "new_message" && ` sent a message in "${n.challenge?.title ?? "a challenge"}"`}
+											{n.type === "follow_request" && ` wants to follow you`}
+											{n.type === "follow_request_accepted" && ` accepted your follow request`}
 										</Text>
 										<Text style={styles.cardTime}>{timeAgo(n.created_at)}</Text>
 									</View>
@@ -115,6 +123,19 @@ export default function Notifications() {
 											<Text style={styles.actionText}>Decline</Text>
 										</Pressable>
 										<Pressable style={[styles.actionBtn, styles.acceptBtn]} onPress={() => handleResponse(n, "accepted")}>
+											<Check size={16} color={Colors.white} strokeWidth={2.6} />
+											<Text style={styles.actionText}>Accept</Text>
+										</Pressable>
+									</View>
+								)}
+
+								{n.type === "follow_request" && n.follow_request_id && (
+									<View style={styles.actions}>
+										<Pressable style={[styles.actionBtn, styles.declineBtn]} onPress={() => handleFollowRequestResponse(n, "declined")}>
+											<X size={16} color={Colors.white} strokeWidth={2.6} />
+											<Text style={styles.actionText}>Decline</Text>
+										</Pressable>
+										<Pressable style={[styles.actionBtn, styles.acceptBtn]} onPress={() => handleFollowRequestResponse(n, "accepted")}>
 											<Check size={16} color={Colors.white} strokeWidth={2.6} />
 											<Text style={styles.actionText}>Accept</Text>
 										</Pressable>
