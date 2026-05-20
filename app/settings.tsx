@@ -330,17 +330,13 @@ export default function Settings() {
 					{closeFriends.length === 0 ? (
 						<Text style={styles.empty}>You haven't added close friends yet.</Text>
 					) : (
-						<View style={[styles.box, { gap: 0 }]}>
+						<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cfAvatarRow}>
 							{closeFriends.map((f) => (
-								<View key={f.id} style={styles.cfItem}>
-									<View style={styles.cfAvatar}>{f.avatar_url ? <Image source={{ uri: f.avatar_url }} style={styles.cfAvatarImg} contentFit="cover" /> : <View style={[styles.cfAvatarImg, { backgroundColor: Colors.secundaire }]} />}</View>
-									<Text style={styles.cfName}>{f.display_name}</Text>
-									<Pressable style={styles.cfRemove} onPress={() => handleRemoveCloseFriend(f.id)}>
-										<X size={16} color={Colors.white} strokeWidth={2.4} />
-									</Pressable>
+								<View key={f.id} style={styles.cfAvatarItem}>
+									{f.avatar_url ? <Image source={{ uri: f.avatar_url }} style={styles.cfAvatarImg} contentFit="cover" /> : <View style={[styles.cfAvatarImg, { backgroundColor: Colors.secundaire }]} />}
 								</View>
 							))}
-						</View>
+						</ScrollView>
 					)}
 
 					{/* Sign out */}
@@ -421,6 +417,8 @@ const styles = StyleSheet.create({
 	cfAvatarImg: { width: "100%", height: "100%" },
 	cfName: { flex: 1, fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
 	cfRemove: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
+	cfAvatarRow: { paddingHorizontal: Spacing.lg, gap: 10, paddingVertical: 4 },
+	cfAvatarItem: { width: 56, height: 56, borderRadius: 28, overflow: "hidden", borderWidth: 2, borderColor: Colors.secundaire },
 
 	signOutBtn: {
 		flexDirection: "row",
