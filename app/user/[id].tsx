@@ -3,12 +3,13 @@ import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
 import { Challenge, daysLeft } from "@/lib/challenges";
-import { followUser, getFollowersCount, getFollowingCount, unfollowUser } from "@/lib/follows";
+import { cancelFollowRequest, checkFollowStatus, FollowRequestStatus, requestOrFollow } from "@/lib/followRequests";
+import { getFollowersCount, getFollowingCount, unfollowUser } from "@/lib/follows";
 import { MuseumCard } from "@/lib/museum";
-import { fetchPublicActiveChallenges, fetchPublicMuseumCards, fetchPublicProfile, isFollowing, PublicProfile } from "@/lib/userProfile";
+import { fetchPublicActiveChallenges, fetchPublicMuseumCards, fetchPublicProfile, PublicProfile } from "@/lib/userProfile";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Lock, Star, UserPlus, X } from "lucide-react-native";
+import { Check, Clock, Lock, Star, UserPlus, X } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,7 +28,7 @@ export default function UserProfile() {
 	const [challenges, setChallenges] = useState<Challenge[]>([]);
 	const [followers, setFollowers] = useState(0);
 	const [followingCount, setFollowingCount] = useState(0);
-	const [following, setFollowing] = useState(false);
+	const [followStatus, setFollowStatus] = useState<FollowRequestStatus>("none");
 	const [continent, setContinent] = useState("All");
 	const [loading, setLoading] = useState(true);
 	const [expandedCard, setExpandedCard] = useState<MuseumCard | null>(null);
@@ -38,14 +39,14 @@ export default function UserProfile() {
 			let cancelled = false;
 			(async () => {
 				setLoading(true);
-				const [p, m, ch, fr, fg, isF] = await Promise.all([fetchPublicProfile(id), fetchPublicMuseumCards(id), fetchPublicActiveChallenges(id), getFollowersCount(id), getFollowingCount(id), isFollowing(currentUserId, id)]);
+				const [p, m, ch, fr, fg, fs] = await Promise.all([fetchPublicProfile(id), fetchPublicMuseumCards(id), fetchPublicActiveChallenges(id), getFollowersCount(id), getFollowingCount(id), checkFollowStatus(currentUserId, id)]);
 				if (!cancelled) {
 					setProfile(p);
 					setCards(m);
 					setChallenges(ch);
 					setFollowers(fr);
 					setFollowingCount(fg);
-					setFollowing(isF);
+					setFollowStatus(fs);
 					setLoading(false);
 				}
 			})();
@@ -67,13 +68,23 @@ export default function UserProfile() {
 
 	const handleFollow = async () => {
 		if (!currentUserId || !id) return;
-		setFollowing((prev) => !prev);
-		if (following) {
-			await unfollowUser(currentUserId, id);
+
+		if (followStatus === "following") {
+			// Unfollow
+			setFollowStatus("none");
 			setFollowers((c) => Math.max(0, c - 1));
+			await unfollowUser(currentUserId, id);
+		} else if (followStatus === "pending") {
+			// Cancel pending request
+			setFollowStatus("none");
+			await cancelFollowRequest(currentUserId, id);
 		} else {
-			await followUser(currentUserId, id);
-			setFollowers((c) => c + 1);
+			// Send request or follow directly depending on privacy
+			const newStatus = await requestOrFollow(currentUserId, id);
+			setFollowStatus(newStatus);
+			if (newStatus === "following") {
+				setFollowers((c) => c + 1);
+			}
 		}
 	};
 
@@ -113,9 +124,23 @@ export default function UserProfile() {
 						<Text style={styles.name}>{profile?.display_name ?? "Runner"}</Text>
 
 						{!isMyOwnProfile && (
-							<Pressable style={[styles.followBtn, following && styles.followBtnActive]} onPress={handleFollow}>
-								{following ? <Check size={16} color={Colors.white} strokeWidth={2.6} /> : <UserPlus size={16} color={Colors.white} strokeWidth={2.4} />}
-								<Text style={styles.followBtnText}>{following ? "Following" : "Follow"}</Text>
+							<Pressable style={[styles.followBtn, followStatus === "following" && styles.followBtnFollowing, followStatus === "pending" && styles.followBtnPending]} onPress={handleFollow}>
+								{followStatus === "following" ? (
+									<>
+										<Check size={16} color={Colors.white} strokeWidth={2.6} />
+										<Text style={styles.followBtnText}>Following</Text>
+									</>
+								) : followStatus === "pending" ? (
+									<>
+										<Clock size={16} color={Colors.white} strokeWidth={2.4} />
+										<Text style={styles.followBtnText}>Requested</Text>
+									</>
+								) : (
+									<>
+										<UserPlus size={16} color={Colors.white} strokeWidth={2.4} />
+										<Text style={styles.followBtnText}>Follow</Text>
+									</>
+								)}
 							</Pressable>
 						)}
 
@@ -229,7 +254,7 @@ export default function UserProfile() {
 			</SafeAreaView>
 
 			{/* Expanded card (read-only, no Set as Featured button) */}
-			<Modal visible={expandedCard !== null} animationType="slide" onRequestClose={() => setExpandedCard(null)}>
+			<Modal visible={expandedCard !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setExpandedCard(null)}>
 				<View style={{ flex: 1 }}>
 					<CosmicBackground>
 						<SafeAreaView edges={["top", "bottom"]} style={{ flex: 1 }}>
@@ -244,7 +269,13 @@ export default function UserProfile() {
 							</View>
 
 							<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-								<View style={styles.expandedCardWrap}>{expandedImage && <Image source={expandedImage} style={styles.expandedCardImage} contentFit="contain" />}</View>
+								<View style={styles.expandedCardWrap}>
+									{expandedImage && (
+										<View style={styles.expandedCardClip}>
+											<Image source={expandedImage} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+										</View>
+									)}
+								</View>
 
 								<View style={styles.expandedFooter}>
 									<View style={styles.expandedRow}>
@@ -287,7 +318,8 @@ const styles = StyleSheet.create({
 	name: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 26, color: Colors.white, marginBottom: Spacing.sm },
 
 	followBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, marginBottom: Spacing.base },
-	followBtnActive: { backgroundColor: Colors.white15 },
+	followBtnFollowing: { backgroundColor: Colors.white15 },
+	followBtnPending: { backgroundColor: "rgba(255, 209, 92, 0.25)", borderWidth: 1, borderColor: "#FFD15C" },
 	followBtnText: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "800", color: Colors.white },
 
 	statsRow: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.white08, borderRadius: Radius.lg, paddingVertical: 14, paddingHorizontal: Spacing.lg, gap: Spacing.lg },
@@ -339,7 +371,7 @@ const styles = StyleSheet.create({
 	expandedName: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 24, color: Colors.white },
 	expandedCloseBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	expandedCardWrap: { alignItems: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm },
-	expandedCardImage: { width: "100%", aspectRatio: 3 / 4, borderRadius: Radius.lg, maxHeight: 440 },
+	expandedCardClip: { width: "100%", aspectRatio: 3 / 4, borderRadius: Radius.lg, overflow: "hidden", maxHeight: 440 },
 	expandedFooter: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: 8 },
 	expandedRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
 	expandedRowLabel: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70 },
