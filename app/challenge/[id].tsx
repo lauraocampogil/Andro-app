@@ -2,7 +2,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { ChallengeDetail, fetchChallengeDetail } from "@/lib/challengeDetail";
-import { ChallengeMessage, fetchMessages, sendMessage, subscribeToMessages } from "@/lib/challengeMessages";
+import { ChallengeMessage, fetchMessages, markChallengeMessagesAsRead, sendMessage, subscribeToMessages } from "@/lib/challengeMessages";
 import { daysLeft } from "@/lib/challenges";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -13,14 +13,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChallengeDetailScreen() {
 	const router = useRouter();
-	const { id } = useLocalSearchParams<{ id: string }>();
+	const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
 	const { session } = useAuth();
 	const userId = session?.user?.id;
 
 	const [detail, setDetail] = useState<ChallengeDetail | null>(null);
 	const [messages, setMessages] = useState<ChallengeMessage[]>([]);
 	const [input, setInput] = useState("");
-	const [tab, setTab] = useState<"info" | "chat">("info");
+	const [tab, setTab] = useState<"info" | "chat">(tabParam === "chat" ? "chat" : "info");
 	const listRef = useRef<FlatList<ChallengeMessage>>(null);
 
 	useFocusEffect(
@@ -33,11 +33,13 @@ export default function ChallengeDetailScreen() {
 					setDetail(d);
 					setMessages(m);
 				}
+				// Mark all message notifs for this challenge as read
+				if (userId) await markChallengeMessagesAsRead(id, userId);
 			})();
 			return () => {
 				cancelled = true;
 			};
-		}, [id]),
+		}, [id, userId]),
 	);
 
 	useEffect(() => {

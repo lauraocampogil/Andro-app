@@ -39,3 +39,13 @@ export function subscribeToMessages(challengeId: string, onMessage: (msg: Challe
 		supabase.removeChannel(channel);
 	};
 }
+
+export async function countUnreadMessages(challengeId: string, userId: string): Promise<number> {
+	// Count notifications for this user, type new_message, related to this challenge, unread
+	const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("type", "new_message").eq("challenge_id", challengeId).eq("read", false);
+	return count ?? 0;
+}
+
+export async function markChallengeMessagesAsRead(challengeId: string, userId: string): Promise<void> {
+	await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("type", "new_message").eq("challenge_id", challengeId).eq("read", false);
+}
