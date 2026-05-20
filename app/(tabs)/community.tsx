@@ -9,8 +9,8 @@ import { followUser } from "@/lib/follows";
 import { countUnreadNotifications } from "@/lib/notifications";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Bell, Globe, Plus, Search, Settings } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import { Bell, ChevronDown, Globe, Plus, Search, Settings } from "lucide-react-native";
+import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -25,6 +25,8 @@ export default function Community() {
 	const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
 	const [participantsByChallenge, setParticipantsByChallenge] = useState<Record<string, any[]>>({});
 	const [loading, setLoading] = useState(true);
+	const [timeFilter, setTimeFilter] = useState<"all" | "1h" | "1d" | "7d">("all");
+	const [filterMenuOpen, setFilterMenuOpen] = useState(false);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -64,6 +66,16 @@ export default function Community() {
 		const ok = await followUser(userId, targetId);
 		if (ok) setSuggestedUsers((prev) => prev.map((u) => (u.id === targetId ? { ...u, is_following: true } : u)));
 	};
+
+	const filteredFeed = useMemo(() => {
+		if (timeFilter === "all") return feed;
+		const now = Date.now();
+		const thresholds = { "1h": 3600000, "1d": 86400000, "7d": 604800000 };
+		const threshold = thresholds[timeFilter];
+		return feed.filter((item) => now - new Date(item.created_at).getTime() <= threshold);
+	}, [feed, timeFilter]);
+
+	const timeFilterLabels = { all: "All time", "1h": "Last hour", "1d": "Last 24h", "7d": "Last 7 days" };
 
 	return (
 		<CosmicBackground>
@@ -181,14 +193,37 @@ export default function Community() {
 
 					{/* Following activity */}
 					<View style={styles.section}>
-						<Text style={styles.sectionTitle}>FOLLOWING ACTIVITY</Text>
+						<View style={styles.feedHeaderRow}>
+							<Text style={styles.feedSectionTitle}>FOLLOWING ACTIVITY</Text>
+							<Pressable style={styles.timeFilterBtn} onPress={() => setFilterMenuOpen((v) => !v)}>
+								<Text style={styles.timeFilterText}>{timeFilterLabels[timeFilter]}</Text>
+								<ChevronDown size={14} color={Colors.white70} strokeWidth={2.2} />
+							</Pressable>
+						</View>
+
+						{filterMenuOpen && (
+							<View style={styles.timeFilterMenu}>
+								{(["all", "1h", "1d", "7d"] as const).map((opt) => (
+									<Pressable
+										key={opt}
+										style={[styles.timeFilterOption, timeFilter === opt && styles.timeFilterOptionActive]}
+										onPress={() => {
+											setTimeFilter(opt);
+											setFilterMenuOpen(false);
+										}}
+									>
+										<Text style={[styles.timeFilterOptionText, timeFilter === opt && styles.timeFilterOptionTextActive]}>{timeFilterLabels[opt]}</Text>
+									</Pressable>
+								))}
+							</View>
+						)}
 
 						{loading ? (
 							<Text style={styles.muted}>Loading feed...</Text>
-						) : feed.length === 0 ? (
-							<Text style={styles.muted}>Follow people to see their activity here.</Text>
+						) : filteredFeed.length === 0 ? (
+							<Text style={styles.muted}>{feed.length === 0 ? "Follow people to see their activity here." : "No activity in this period."}</Text>
 						) : (
-							feed.map((item) => (
+							filteredFeed.map((item) => (
 								<Pressable key={item.id} style={styles.feedCard} onPress={() => router.push(`/user/${item.user_id}` as any)}>
 									<View style={styles.feedHeader}>
 										<View style={styles.feedAvatar}>
@@ -310,6 +345,64 @@ const styles = StyleSheet.create({
 	feedTime: { fontFamily: Fonts.body, fontSize: 11, color: Colors.ink50, marginTop: 2 },
 	feedAction: { fontFamily: Fonts.body, fontSize: 13, color: Colors.ink70 },
 	feedHighlight: { fontFamily: Fonts.bodyBold, fontWeight: "800", color: Colors.ink },
+
+	feedHeaderRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingHorizontal: Spacing.lg,
+		marginBottom: Spacing.md,
+	},
+	feedSectionTitle: {
+		fontFamily: Fonts.display,
+		fontStyle: "italic",
+		fontSize: 20,
+		color: Colors.white,
+	},
+	timeFilterBtn: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: Radius.pill,
+		backgroundColor: Colors.white08,
+		borderWidth: 1,
+		borderColor: Colors.white15,
+	},
+	timeFilterText: {
+		fontFamily: Fonts.bodyBold,
+		fontSize: 12,
+		color: Colors.white70,
+	},
+	timeFilterMenu: {
+		marginHorizontal: Spacing.lg,
+		marginBottom: Spacing.md,
+		backgroundColor: Colors.hoofdkleur,
+		borderRadius: Radius.lg,
+		borderWidth: 1,
+		borderColor: Colors.white15,
+		overflow: "hidden",
+	},
+	timeFilterOption: {
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		borderBottomWidth: 1,
+		borderBottomColor: Colors.white15,
+	},
+	timeFilterOptionActive: {
+		backgroundColor: "rgba(91, 88, 235, 0.18)",
+	},
+	timeFilterOptionText: {
+		fontFamily: Fonts.body,
+		fontSize: 14,
+		color: Colors.white70,
+	},
+	timeFilterOptionTextActive: {
+		color: Colors.white,
+		fontFamily: Fonts.bodyBold,
+		fontWeight: "700",
+	},
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.base },
 });
