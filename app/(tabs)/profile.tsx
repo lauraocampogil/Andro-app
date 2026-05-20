@@ -4,6 +4,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
+import { countUnreadMessages } from "@/lib/challengeMessages";
 import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants } from "@/lib/challenges";
 import { getFollowersCount, getFollowingCount } from "@/lib/follows";
 import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unsetFeaturedCard } from "@/lib/museum";
@@ -11,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, ChevronRight, ListFilter, Lock, Settings, Star, X } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -182,7 +183,7 @@ export default function Profile() {
 										</View>
 										<ChevronRight size={20} color={Colors.ink70} strokeWidth={2.2} />
 									</View>
-									<ChallengeParticipantsRow challengeId={c.id} />
+									{userId && <ChallengeRow challengeId={c.id} userId={userId} />}
 									<View style={styles.progressBar}>
 										<View style={[styles.progressFill, { width: `${Math.min(100, (c.user_progress ?? 0) * 100)}%` }]} />
 									</View>
@@ -383,29 +384,50 @@ function MuseumCardItem({ card, width, isFeatured, onPress }: { card: MuseumCard
 	);
 }
 
-function ChallengeParticipantsRow({ challengeId }: { challengeId: string }) {
+function ChallengeRow({ challengeId, userId }: { challengeId: string; userId: string }) {
 	const [participants, setParticipants] = useState<any[]>([]);
-	useEffect(() => {
-		(async () => {
-			const p = await fetchChallengeParticipants(challengeId);
-			setParticipants(p);
-		})();
-	}, [challengeId]);
+	const [unreadCount, setUnreadCount] = useState(0);
 
-	if (participants.length === 0) return null;
+	useFocusEffect(
+		useCallback(() => {
+			let cancelled = false;
+			(async () => {
+				const [p, u] = await Promise.all([fetchChallengeParticipants(challengeId), countUnreadMessages(challengeId, userId)]);
+				if (!cancelled) {
+					setParticipants(p);
+					setUnreadCount(u);
+				}
+			})();
+			return () => {
+				cancelled = true;
+			};
+		}, [challengeId, userId]),
+	);
 
 	return (
-		<View style={{ flexDirection: "row", alignItems: "center", marginVertical: 8 }}>
-			<View style={{ flexDirection: "row" }}>
-				{participants.slice(0, 5).map((p, i) => (
-					<View key={p.id} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
-						{p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-					</View>
-				))}
+		<View style={{ flexDirection: "row", alignItems: "center", marginVertical: 8, justifyContent: "space-between" }}>
+			<View style={{ flexDirection: "row", alignItems: "center" }}>
+				{participants.length > 0 && (
+					<>
+						<View style={{ flexDirection: "row" }}>
+							{participants.slice(0, 5).map((p, i) => (
+								<View key={p.id} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
+									{p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+								</View>
+							))}
+						</View>
+						<Text style={{ marginLeft: 8, fontFamily: Fonts.body, fontSize: 12, color: Colors.ink70 }}>
+							{participants.length} {participants.length === 1 ? "runner" : "runners"}
+						</Text>
+					</>
+				)}
 			</View>
-			<Text style={{ marginLeft: 8, fontFamily: Fonts.body, fontSize: 12, color: Colors.ink70 }}>
-				{participants.length} {participants.length === 1 ? "runner" : "runners"}
-			</Text>
+
+			{unreadCount > 0 && (
+				<View style={styles.unreadBadge}>
+					<Text style={styles.unreadBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+				</View>
+			)}
 		</View>
 	);
 }
@@ -460,6 +482,22 @@ const styles = StyleSheet.create({
 	challengeCardTop: { flexDirection: "row", alignItems: "center", gap: 8 },
 	participantAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: Colors.white, overflow: "hidden" },
 	participantAvatarImg: { width: "100%", height: "100%" },
+
+	unreadBadge: {
+		minWidth: 22,
+		height: 22,
+		borderRadius: 11,
+		backgroundColor: "#FF5757",
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 6,
+	},
+	unreadBadgeText: {
+		fontFamily: Fonts.bodyBold,
+		fontSize: 11,
+		fontWeight: "800",
+		color: Colors.white,
+	},
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingVertical: Spacing.lg, paddingHorizontal: Spacing.lg },
 
