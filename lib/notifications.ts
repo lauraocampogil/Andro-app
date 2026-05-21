@@ -21,11 +21,28 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 
 	if (error || !data) return [];
 
+	// Resolve sender profiles
 	const fromIds = Array.from(new Set(data.map((n: any) => n.from_user_id).filter(Boolean)));
 	const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", fromIds);
 	const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
 
-	return data.map((n: any) => ({
+	// Find which challenge invitations are already resolved (accepted/declined)
+	const inviteIds = Array.from(new Set(data.filter((n: any) => n.type === "challenge_invite" && n.invitation_id).map((n: any) => n.invitation_id)));
+	let resolvedInviteIds = new Set<string>();
+	if (inviteIds.length > 0) {
+		const { data: invites } = await supabase.from("challenge_invitations").select("id, status").in("id", inviteIds);
+		resolvedInviteIds = new Set((invites ?? []).filter((i: any) => i.status !== "pending").map((i: any) => i.id));
+	}
+
+	// Find which follow requests are already resolved (accepted/declined)
+	const followReqIds = Array.from(new Set(data.filter((n: any) => n.type === "follow_request" && n.follow_request_id).map((n: any) => n.follow_request_id)));
+	let resolvedFollowReqIds = new Set<string>();
+	if (followReqIds.length > 0) {
+		const { data: reqs } = await supabase.from("follow_requests").select("id, status").in("id", followReqIds);
+		resolvedFollowReqIds = new Set((reqs ?? []).filter((r: any) => r.status !== "pending").map((r: any) => r.id));
+	}
+
+	const mapped: Notification[] = data.map((n: any) => ({
 		id: n.id,
 		type: n.type,
 		from_user: n.from_user_id ? (profileMap.get(n.from_user_id) ?? null) : null,
@@ -35,6 +52,18 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 		read: n.read,
 		created_at: n.created_at,
 	}));
+
+	// Drop challenge_invite / follow_request notifications whose underlying request is no longer pending.
+	// This is what stops accept/decline buttons from reappearing after the invite was answered.
+	return mapped.filter((n) => {
+		if (n.type === "challenge_invite" && n.invitation_id && resolvedInviteIds.has(n.invitation_id)) {
+			return false;
+		}
+		if (n.type === "follow_request" && n.follow_request_id && resolvedFollowReqIds.has(n.follow_request_id)) {
+			return false;
+		}
+		return true;
+	});
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
