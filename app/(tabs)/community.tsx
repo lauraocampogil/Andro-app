@@ -3,7 +3,7 @@ import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
-import { Challenge, daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge } from "@/lib/challenges";
+import { Challenge, daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge, SuggestedChallenge } from "@/lib/challenges";
 import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, searchUsers, SuggestedUser, timeAgo } from "@/lib/community";
 import { followUser } from "@/lib/follows";
 import { countUnreadNotifications } from "@/lib/notifications";
@@ -21,7 +21,7 @@ export default function Community() {
 
 	const [search, setSearch] = useState("");
 	const [feed, setFeed] = useState<ActivityItem[]>([]);
-	const [suggested, setSuggested] = useState<Challenge[]>([]);
+	const [suggested, setSuggested] = useState<SuggestedChallenge[]>([]);
 	const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
 	const [participantsByChallenge, setParticipantsByChallenge] = useState<Record<string, any[]>>({});
 	const [loading, setLoading] = useState(true);
@@ -484,11 +484,13 @@ const styles = StyleSheet.create({
 	modalBackdrop: { flex: 1, backgroundColor: "rgba(4,8,26,0.82)", alignItems: "center", justifyContent: "center" },
 	filterCard: { width: 320, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.white15, padding: Spacing.lg },
 	filterHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.base },
-	filterTitle: { 	fontFamily: Fonts.display,
-	fontStyle: "italic",
-	fontSize: 22,   // 22
-	color: Colors.white,
-	letterSpacing: 0, },
+	filterTitle: {
+		fontFamily: Fonts.display,
+		fontStyle: "italic",
+		fontSize: 22, // 22
+		color: Colors.white,
+		letterSpacing: 0,
+	},
 	filterRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
 	filterRowText: { fontFamily: Fonts.body, fontSize: 15, color: Colors.white },
 	filterCheckbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: Colors.white30, alignItems: "center", justifyContent: "center" },
@@ -501,4 +503,10 @@ const styles = StyleSheet.create({
 	searchAvatarImg: { width: "100%", height: "100%" },
 	searchName: { flex: 1, fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
 	followingTag: { fontFamily: Fonts.body, fontSize: 11, color: Colors.white50 },
+
+	difficultyBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
+	diffEasy: { backgroundColor: "rgba(91,200,120,0.2)" },
+	diffMedium: { backgroundColor: "rgba(255,209,92,0.2)" },
+	diffHard: { backgroundColor: "rgba(255,87,87,0.2)" },
+	difficultyText: { fontFamily: Fonts.bodyBold, fontSize: 10, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },
 });
