@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabase";
 
 export async function addCloseFriend(userId: string, friendId: string): Promise<boolean> {
-	const { error } = await supabase.from("close_friends").insert({ user_id: userId, close_friend_id: friendId });
+	const { data, error } = await supabase.from("close_friends").insert({ user_id: userId, close_friend_id: friendId }).select();
+	console.log("[addCloseFriend] data:", data, "error:", error);
 	return !error;
 }
 
@@ -16,6 +17,12 @@ export async function getCloseFriendIds(userId: string): Promise<string[]> {
 }
 
 export async function getCloseFriendProfiles(userId: string) {
-	const { data } = await supabase.from("close_friends").select("close_friend_id, profile:profiles!close_friend_id(id, display_name, avatar_url)").eq("user_id", userId);
-	return (data ?? []).map((d: any) => d.profile);
+	const { data: cf, error } = await supabase.from("close_friends").select("close_friend_id").eq("user_id", userId);
+
+	if (error || !cf || cf.length === 0) return [];
+
+	const ids = cf.map((c) => c.close_friend_id);
+	const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", ids);
+
+	return profiles ?? [];
 }
