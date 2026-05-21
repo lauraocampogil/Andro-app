@@ -1,12 +1,13 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
-import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { ChallengeDetail, fetchChallengeDetail } from "@/lib/challengeDetail";
 import { ChallengeMessage, fetchMessages, markChallengeMessagesAsRead, sendMessage, subscribeToMessages } from "@/lib/challengeMessages";
 import { daysLeft } from "@/lib/challenges";
+import { respondToInvitation } from "@/lib/notifications";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronRight, Send, Trophy, X } from "lucide-react-native";
+import { Check, ChevronRight, Send, Trophy, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,20 +22,21 @@ export default function ChallengeDetailScreen() {
 	const [messages, setMessages] = useState<ChallengeMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [tab, setTab] = useState<"info" | "chat">(tabParam === "chat" ? "chat" : "info");
+	const [responding, setResponding] = useState(false);
 	const listRef = useRef<FlatList<ChallengeMessage>>(null);
 
 	useFocusEffect(
 		useCallback(() => {
-			if (!id) return;
+			if (!id || !userId) return;
 			let cancelled = false;
 			(async () => {
-				const [d, m] = await Promise.all([fetchChallengeDetail(id), fetchMessages(id)]);
+				const [d, m] = await Promise.all([fetchChallengeDetail(id, userId), fetchMessages(id)]);
 				if (!cancelled) {
 					setDetail(d);
 					setMessages(m);
 				}
 				// Mark all message notifs for this challenge as read
-				if (userId) await markChallengeMessagesAsRead(id, userId);
+				await markChallengeMessagesAsRead(id, userId);
 			})();
 			return () => {
 				cancelled = true;
@@ -56,6 +58,19 @@ export default function ChallengeDetailScreen() {
 		const content = input.trim();
 		setInput("");
 		await sendMessage(id, userId, content);
+	};
+
+	const handleInvitationResponse = async (status: "accepted" | "declined") => {
+		if (!detail?.pendingInvitation || !id || !userId) return;
+		setResponding(true);
+		await respondToInvitation(detail.pendingInvitation.id, status);
+		// Re-fetch so the buttons disappear and the leaderboard updates
+		const fresh = await fetchChallengeDetail(id, userId);
+		setDetail(fresh);
+		setResponding(false);
+		if (status === "declined") {
+			router.back();
+		}
 	};
 
 	const formatDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
@@ -95,6 +110,23 @@ export default function ChallengeDetailScreen() {
 
 				{tab === "info" ? (
 					<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+						{/* Pending invitation banner — only shows if YOU have a pending invite */}
+						{detail.pendingInvitation && (
+							<View style={styles.inviteBanner}>
+								<Text style={styles.inviteBannerText}>You've been invited to this challenge.</Text>
+								<View style={styles.inviteActions}>
+									<Pressable style={[styles.inviteBtn, styles.declineBtn]} disabled={responding} onPress={() => handleInvitationResponse("declined")}>
+										<X size={16} color={Colors.white} strokeWidth={2.6} />
+										<Text style={styles.inviteBtnText}>Decline</Text>
+									</Pressable>
+									<Pressable style={[styles.inviteBtn, styles.acceptBtn]} disabled={responding} onPress={() => handleInvitationResponse("accepted")}>
+										<Check size={16} color={Colors.white} strokeWidth={2.6} />
+										<Text style={styles.inviteBtnText}>Accept</Text>
+									</Pressable>
+								</View>
+							</View>
+						)}
+
 						{/* Race card for marathon_battle */}
 						{detail.race && (
 							<Pressable style={styles.raceCard} onPress={() => router.push(`/race/${detail.race!.id}` as any)}>
@@ -140,11 +172,11 @@ export default function ChallengeDetailScreen() {
 						</View>
 
 						{/* Leaderboard */}
-						<Text style={styles.sectionTitle}>LEADERBOARD</Text>
+						<Text style={styles.sectionTitle}>Leaderboard</Text>
 						<View style={styles.leaderboard}>
 							{detail.participants.map((p, idx) => (
 								<Pressable key={p.id} style={styles.leaderboardRow} onPress={() => router.push(`/user/${p.id}` as any)}>
-									<View style={styles.rankWrap}>{idx === 0 ? <Trophy size={18} color="#FFD15C" fill="#FFD15C" strokeWidth={2} /> : <Text style={styles.rankNum}>{idx + 1}</Text>}</View>
+									<View style={styles.rankWrap}>{idx === 0 ? <Trophy size={18} color={Colors.legendary} fill={Colors.legendary} strokeWidth={2} /> : <Text style={styles.rankNum}>{idx + 1}</Text>}</View>
 									<View style={styles.leaderAvatar}>{p.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.leaderAvatarImg} contentFit="cover" /> : <View style={[styles.leaderAvatarImg, { backgroundColor: Colors.secundaire }]} />}</View>
 									<View style={{ flex: 1 }}>
 										<Text style={styles.leaderName}>{p.display_name}</Text>
@@ -210,13 +242,21 @@ function labelForType(t: string): string {
 const styles = StyleSheet.create({
 	header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.base, gap: Spacing.base },
 	backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
-	headerTitle: { flex: 1, fontFamily: Fonts.display, fontStyle: "italic", fontSize: 18, color: Colors.white, textAlign: "center" },
+	headerTitle: { flex: 1, fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h2, color: Colors.white, textAlign: "center" },
 
 	tabs: { flexDirection: "row", alignSelf: "center", backgroundColor: Colors.white15, borderRadius: Radius.pill, padding: 4, marginBottom: Spacing.base },
 	tab: { paddingHorizontal: 24, paddingVertical: 8, borderRadius: Radius.pill },
 	tabActive: { backgroundColor: Colors.white },
 	tabText: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "700", color: Colors.white },
 	tabTextActive: { color: Colors.ink },
+
+	inviteBanner: { marginHorizontal: Spacing.lg, marginBottom: Spacing.base, padding: Spacing.base, backgroundColor: "rgba(91, 88, 235, 0.15)", borderWidth: 1, borderColor: Colors.secundaire, borderRadius: Radius.lg },
+	inviteBannerText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white, marginBottom: Spacing.md },
+	inviteActions: { flexDirection: "row", gap: 8 },
+	inviteBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: Radius.pill },
+	inviteBtnText: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "800", color: Colors.white },
+	acceptBtn: { backgroundColor: Colors.secundaire },
+	declineBtn: { backgroundColor: Colors.white15 },
 
 	raceCard: { flexDirection: "row", alignItems: "center", marginHorizontal: Spacing.lg, padding: Spacing.base, backgroundColor: Colors.white, borderRadius: Radius.lg, marginBottom: Spacing.base, gap: 8 },
 	raceCardLabel: { fontFamily: Fonts.bodyBold, fontSize: 10, fontWeight: "800", color: Colors.secundaire, letterSpacing: 1.5 },
@@ -228,7 +268,7 @@ const styles = StyleSheet.create({
 	infoLabel: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70 },
 	infoValue: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "700", color: Colors.white },
 
-	sectionTitle: { fontFamily: Fonts.bodyBold, fontSize: 12, fontWeight: "800", color: Colors.white70, letterSpacing: 1.5, paddingHorizontal: Spacing.lg, marginBottom: 10 },
+	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0, paddingHorizontal: Spacing.lg, marginBottom: 10 },
 
 	leaderboard: { marginHorizontal: Spacing.lg, gap: 8 },
 	leaderboardRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: Colors.white08, borderRadius: Radius.lg, padding: 10 },

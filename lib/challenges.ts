@@ -25,23 +25,89 @@ export async function fetchActiveChallenges(userId: string): Promise<Challenge[]
 	return data.map((d: any) => ({ ...d.challenge, user_progress: d.progress }));
 }
 
-export async function fetchSuggestedChallenges(userId: string): Promise<Challenge[]> {
-	const { data: joined } = await supabase.from("challenge_participants").select("challenge_id").eq("user_id", userId);
-	const joinedIds = (joined ?? []).map((j) => j.challenge_id);
+export type SuggestedChallenge = {
+	id: string; // ← ajouté : identifiant stable (= template_key)
+	template_key: string;
+	type: ChallengeType;
+	title: string;
+	description: string;
+	continent: string | null;
+	distance_km: number | null;
+	target_count: number | null;
+	deadline: string; // ISO
+	duration_label: string; // human readable
+	difficulty: "easy" | "medium" | "hard";
+	participants_count: number; // ← ajouté
+};
 
-	let query = supabase.from("challenges").select("*").order("created_at", { ascending: false }).limit(10);
-	if (joinedIds.length > 0) query = query.not("id", "in", `(${joinedIds.join(",")})`);
+// userId est accepté pour usage futur (filtrer les challenges déjà rejoints).
+export async function fetchSuggestedChallenges(userId?: string): Promise<SuggestedChallenge[]> {
+	const now = new Date();
+	const addDays = (d: number) => {
+		const x = new Date(now);
+		x.setDate(x.getDate() + d);
+		return x.toISOString();
+	};
+	const endOfYear = new Date(now.getFullYear(), 11, 31).toISOString();
 
-	const { data, error } = await query;
-	if (error || !data) return [];
-
-	const ids = data.map((c) => c.id);
-	const { data: counts } = await supabase.from("challenge_participants").select("challenge_id").in("challenge_id", ids);
-
-	const countMap = new Map<string, number>();
-	(counts ?? []).forEach((c) => countMap.set(c.challenge_id, (countMap.get(c.challenge_id) ?? 0) + 1));
-
-	return data.map((c) => ({ ...c, participants_count: countMap.get(c.id) ?? 0 }));
+	return [
+		{
+			id: "europe-10k-30d",
+			template_key: "europe-10k-30d",
+			type: "color_continent",
+			title: "Color Europe",
+			description: "Unlock 3 race cards across Europe before the deadline.",
+			continent: "Europe",
+			distance_km: null,
+			target_count: 3,
+			deadline: addDays(30),
+			duration_label: "30 days",
+			difficulty: "medium",
+			participants_count: 0,
+		},
+		{
+			id: "yearly-10-races",
+			template_key: "yearly-10-races",
+			type: "yearly_races",
+			title: "10 Races This Year",
+			description: "Complete 10 races before December 31st.",
+			continent: null,
+			distance_km: null,
+			target_count: 10,
+			deadline: endOfYear,
+			duration_label: `until Dec 31`,
+			difficulty: "hard",
+			participants_count: 0,
+		},
+		{
+			id: "marathon-sprint-14d",
+			template_key: "marathon-sprint-14d",
+			type: "marathon_battle",
+			title: "Marathon Sprint",
+			description: "Be the first to finish a 42 km marathon within 2 weeks.",
+			continent: null,
+			distance_km: 42,
+			target_count: null,
+			deadline: addDays(14),
+			duration_label: "14 days",
+			difficulty: "hard",
+			participants_count: 0,
+		},
+		{
+			id: "weekend-warrior-7d",
+			template_key: "weekend-warrior-7d",
+			type: "yearly_races",
+			title: "Weekend Warrior",
+			description: "Run 2 races this week. Quick and punchy.",
+			continent: null,
+			distance_km: null,
+			target_count: 2,
+			deadline: addDays(7),
+			duration_label: "7 days",
+			difficulty: "easy",
+			participants_count: 0,
+		},
+	];
 }
 
 export async function fetchChallengeParticipants(challengeId: string) {
