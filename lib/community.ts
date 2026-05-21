@@ -100,3 +100,23 @@ export async function fetchSuggestedUsers(currentUserId: string): Promise<Sugges
 		is_following: false,
 	}));
 }
+
+export async function searchUsers(query: string, currentUserId: string): Promise<SuggestedUser[]> {
+	const q = query.trim();
+	if (q.length < 1) return [];
+
+	const { data, error } = await supabase.from("profiles").select("id, display_name, avatar_url").ilike("display_name", `%${q}%`).neq("id", currentUserId).limit(20);
+
+	if (error || !data) return [];
+
+	// Check which ones we already follow
+	const { data: follows } = await supabase.from("follows").select("following_id").eq("follower_id", currentUserId);
+	const followingSet = new Set((follows ?? []).map((f) => f.following_id));
+
+	return data.map((p: any) => ({
+		id: p.id,
+		display_name: p.display_name ?? "Anonymous",
+		avatar_url: p.avatar_url,
+		is_following: followingSet.has(p.id),
+	}));
+}

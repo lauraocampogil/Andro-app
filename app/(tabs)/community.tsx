@@ -4,14 +4,14 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { Challenge, daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge } from "@/lib/challenges";
-import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, SuggestedUser, timeAgo } from "@/lib/community";
+import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, searchUsers, SuggestedUser, timeAgo } from "@/lib/community";
 import { followUser } from "@/lib/follows";
 import { countUnreadNotifications } from "@/lib/notifications";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Bell, ChevronDown, Globe, Plus, Search, Settings } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Bell, Check, ChevronDown, Globe, ListFilter, Plus, Search, X } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Community() {
@@ -27,6 +27,32 @@ export default function Community() {
 	const [loading, setLoading] = useState(true);
 	const [timeFilter, setTimeFilter] = useState<"all" | "1h" | "1d" | "7d">("all");
 	const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+
+	const [sectionFilterOpen, setSectionFilterOpen] = useState(false);
+	const [visibleSections, setVisibleSections] = useState({
+		challenges: true,
+		people: true,
+		activity: true,
+	});
+
+	const [searchResults, setSearchResults] = useState<SuggestedUser[]>([]);
+	const [searching, setSearching] = useState(false);
+
+	useEffect(() => {
+		if (!userId) return;
+		const q = search.trim();
+		if (q.length < 1) {
+			setSearchResults([]);
+			return;
+		}
+		setSearching(true);
+		const timer = setTimeout(async () => {
+			const results = await searchUsers(q, userId);
+			setSearchResults(results);
+			setSearching(false);
+		}, 300); // debounce
+		return () => clearTimeout(timer);
+	}, [search, userId]);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -82,192 +108,241 @@ export default function Community() {
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
 				<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
 					<ScreenHeader
-						left={
-							<View style={{ flexDirection: "row", gap: 8 }}>
-								<HeaderButton onPress={() => router.push("/settings" as any)}>
-									<Settings size={20} color={Colors.ink} strokeWidth={2} />
-								</HeaderButton>
-							</View>
-						}
+						left={<NotifBadgeButton onPress={() => router.push("/notifications" as any)} />}
 						center={
 							<View style={styles.searchBox}>
 								<Search size={18} color={Colors.white70} strokeWidth={2.2} />
-								<TextInput value={search} onChangeText={setSearch} placeholder="Search people, challenges..." placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
+								<TextInput value={search} onChangeText={setSearch} placeholder="Search people..." placeholderTextColor={Colors.white50} style={styles.searchInput} returnKeyType="search" />
 							</View>
 						}
 						right={
-							<View style={{ flexDirection: "row", gap: 8 }}>
-								<NotifBadgeButton onPress={() => router.push("/notifications" as any)} />
-							</View>
+							<HeaderButton variant="primary" onPress={() => setSectionFilterOpen(true)}>
+								<ListFilter size={20} color={Colors.white} strokeWidth={2} />
+							</HeaderButton>
 						}
 					/>
 
-					{/* Suggested Challenges */}
-					<View style={styles.section}>
-						<View style={styles.sectionHeader}>
-							<Text style={styles.sectionHeaderTitle}>SUGGESTED CHALLENGES</Text>
-							<Pressable style={styles.createBtn} onPress={() => router.push("/create-challenge" as any)}>
-								<Plus size={14} color={Colors.white} strokeWidth={2.6} />
-								<Text style={styles.createBtnText}>Create</Text>
-							</Pressable>
-						</View>
-
-						{suggested.length === 0 ? (
-							<Text style={styles.muted}>No suggestions right now.</Text>
-						) : (
-							suggested.map((c) => {
-								const participants = participantsByChallenge[c.id] ?? [];
-								return (
-									<View key={c.id} style={styles.challengeCard}>
-										<View style={styles.challengeRow}>
-											<Globe size={18} color={Colors.ink} strokeWidth={2.2} />
-											<Text style={styles.challengeTitle}>{c.title}</Text>
-											<Text style={styles.challengeDeadline}>{daysLeft(c.deadline)}</Text>
-										</View>
-										{c.description && <Text style={styles.challengeDesc}>{c.description}</Text>}
-										<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-											{participants.length > 0 ? (
-												<>
-													<View style={styles.avatarsRow}>
-														{participants.slice(0, 5).map((p, i) => (
-															<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
-																{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-															</View>
-														))}
-													</View>
-													<Text style={[styles.challengeMeta, { marginLeft: 8, marginBottom: 0 }]}>
-														{c.participants_count} {c.participants_count === 1 ? "runner" : "runners"}
-													</Text>
-												</>
-											) : (
-												<Text style={styles.challengeMeta}>No runners yet</Text>
-											)}
-										</View>
-
-										{/* Friend avatars */}
-										{participants.length > 0 && (
-											<View style={styles.avatarsRow}>
-												{participants.slice(0, 5).map((p, i) => (
-													<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
-														{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-													</View>
-												))}
-											</View>
-										)}
-
-										<Pressable style={styles.joinBtn} onPress={() => handleJoin(c.id)}>
-											<Text style={styles.joinBtnText}>Join Challenge →</Text>
-										</Pressable>
-									</View>
-								);
-							})
-						)}
-					</View>
-
-					{/* Suggested users */}
-					{suggestedUsers.length > 0 && (
+					{search.trim().length > 0 ? (
 						<View style={styles.section}>
-							<Text style={styles.sectionTitle}>PEOPLE TO FOLLOW</Text>
-							<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.usersRow}>
-								{suggestedUsers.map((u) => (
-									<Pressable key={u.id} style={styles.userCard} onPress={() => router.push(`/user/${u.id}` as any)}>
-										<View style={styles.userAvatar}>{u.avatar_url ? <Image source={{ uri: u.avatar_url }} style={styles.userAvatarImg} contentFit="cover" /> : <View style={[styles.userAvatarImg, { backgroundColor: Colors.secundaire }]} />}</View>
-										<Text style={styles.userName} numberOfLines={1}>
-											{u.display_name}
-										</Text>
-										<Pressable
-											style={[styles.followBtn, u.is_following && styles.followBtnActive]}
-											onPress={(e) => {
-												e.stopPropagation?.();
-												!u.is_following && handleFollow(u.id);
-											}}
-											disabled={u.is_following}
-										>
-											<Text style={styles.followBtnText}>{u.is_following ? "Following" : "Follow"}</Text>
+							<Text style={styles.sectionTitle}>Search results</Text>
+							{searching ? (
+								<Text style={styles.muted}>Searching...</Text>
+							) : searchResults.length === 0 ? (
+								<Text style={styles.muted}>No one found for "{search}".</Text>
+							) : (
+								searchResults.map((u) => (
+									<Pressable key={u.id} style={styles.searchResultRow} onPress={() => router.push(`/user/${u.id}` as any)}>
+										<View style={styles.searchAvatar}>
+											{u.avatar_url ? <Image source={{ uri: u.avatar_url }} style={styles.searchAvatarImg} contentFit="cover" /> : <View style={[styles.searchAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+										</View>
+										<Text style={styles.searchName}>{u.display_name}</Text>
+										{u.is_following && <Text style={styles.followingTag}>Following</Text>}
+									</Pressable>
+								))
+							)}
+						</View>
+					) : (
+						<>
+							{/* Suggested Challenges */}
+							{visibleSections.challenges && (
+								<View style={styles.section}>
+									<View style={styles.sectionHeader}>
+										<Text style={styles.sectionHeaderTitle}>SUGGESTED CHALLENGES</Text>
+										<Pressable style={styles.createBtn} onPress={() => router.push("/create-challenge" as any)}>
+											<Plus size={14} color={Colors.white} strokeWidth={2.6} />
+											<Text style={styles.createBtnText}>Create</Text>
 										</Pressable>
-									</Pressable>
-								))}
-							</ScrollView>
-						</View>
-					)}
-
-					{/* Following activity */}
-					<View style={styles.section}>
-						<View style={styles.feedHeaderRow}>
-							<Text style={styles.feedSectionTitle}>FOLLOWING ACTIVITY</Text>
-							<Pressable style={styles.timeFilterBtn} onPress={() => setFilterMenuOpen((v) => !v)}>
-								<Text style={styles.timeFilterText}>{timeFilterLabels[timeFilter]}</Text>
-								<ChevronDown size={14} color={Colors.white70} strokeWidth={2.2} />
-							</Pressable>
-						</View>
-
-						{filterMenuOpen && (
-							<View style={styles.timeFilterMenu}>
-								{(["all", "1h", "1d", "7d"] as const).map((opt) => (
-									<Pressable
-										key={opt}
-										style={[styles.timeFilterOption, timeFilter === opt && styles.timeFilterOptionActive]}
-										onPress={() => {
-											setTimeFilter(opt);
-											setFilterMenuOpen(false);
-										}}
-									>
-										<Text style={[styles.timeFilterOptionText, timeFilter === opt && styles.timeFilterOptionTextActive]}>{timeFilterLabels[opt]}</Text>
-									</Pressable>
-								))}
-							</View>
-						)}
-
-						{loading ? (
-							<Text style={styles.muted}>Loading feed...</Text>
-						) : filteredFeed.length === 0 ? (
-							<Text style={styles.muted}>{feed.length === 0 ? "Follow people to see their activity here." : "No activity in this period."}</Text>
-						) : (
-							filteredFeed.map((item) => (
-								<Pressable key={item.id} style={styles.feedCard} onPress={() => router.push(`/user/${item.user_id}` as any)}>
-									<View style={styles.feedHeader}>
-										<View style={styles.feedAvatar}>
-											{item.user?.avatar_url ? <Image source={{ uri: item.user.avatar_url }} style={styles.feedAvatarImg} contentFit="cover" /> : <View style={[styles.feedAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-										</View>
-										<View style={{ flex: 1 }}>
-											<Text style={styles.feedUserName}>{item.user?.display_name ?? "Someone"}</Text>
-											<Text style={styles.feedTime}>{timeAgo(item.created_at)}</Text>
-										</View>
 									</View>
-									<Text style={styles.feedAction}>
-										{item.action_type === "scanned" && (
-											<>
-												Unlocked <Text style={styles.feedHighlight}>{item.card?.creature_name ?? "a new card"}</Text>
-												{item.race ? ` at ${item.race.name}` : ""}
-											</>
-										)}
-										{item.action_type === "joined_race" && (
-											<>
-												Joined <Text style={styles.feedHighlight}>{item.race?.name ?? "a race"}</Text>
-											</>
-										)}
-										{item.action_type === "challenged" && (
-											<>
-												Joined the challenge <Text style={styles.feedHighlight}>{item.challenge?.title ?? ""}</Text>
-											</>
-										)}
-										{item.action_type === "followed" && (
-											<>
-												Started following <Text style={styles.feedHighlight}>{item.target_user?.display_name ?? "someone"}</Text>
-											</>
-										)}
-										{item.action_type === "card_featured" && (
-											<>
-												Featured <Text style={styles.feedHighlight}>{item.card?.creature_name ?? "a card"}</Text> on their profile
-											</>
-										)}
-									</Text>
-								</Pressable>
-							))
-						)}
-					</View>
+
+									{suggested.length === 0 ? (
+										<Text style={styles.muted}>No suggestions right now.</Text>
+									) : (
+										suggested.map((c) => {
+											const participants = participantsByChallenge[c.id] ?? [];
+											return (
+												<View key={c.id} style={styles.challengeCard}>
+													<View style={styles.challengeRow}>
+														<Globe size={18} color={Colors.ink} strokeWidth={2.2} />
+														<Text style={styles.challengeTitle}>{c.title}</Text>
+														<Text style={styles.challengeDeadline}>{daysLeft(c.deadline)}</Text>
+													</View>
+													{c.description && <Text style={styles.challengeDesc}>{c.description}</Text>}
+													<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+														{participants.length > 0 ? (
+															<>
+																<View style={styles.avatarsRow}>
+																	{participants.slice(0, 5).map((p, i) => (
+																		<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
+																			{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+																		</View>
+																	))}
+																</View>
+																<Text style={[styles.challengeMeta, { marginLeft: 8, marginBottom: 0 }]}>
+																	{c.participants_count} {c.participants_count === 1 ? "runner" : "runners"}
+																</Text>
+															</>
+														) : (
+															<Text style={styles.challengeMeta}>No runners yet</Text>
+														)}
+													</View>
+
+													{/* Friend avatars */}
+													{participants.length > 0 && (
+														<View style={styles.avatarsRow}>
+															{participants.slice(0, 5).map((p, i) => (
+																<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
+																	{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+																</View>
+															))}
+														</View>
+													)}
+
+													<Pressable style={styles.joinBtn} onPress={() => handleJoin(c.id)}>
+														<Text style={styles.joinBtnText}>Join Challenge →</Text>
+													</Pressable>
+												</View>
+											);
+										})
+									)}
+								</View>
+							)}
+
+							{/* Suggested users */}
+							{visibleSections.people && suggestedUsers.length > 0 && (
+								<View style={styles.section}>
+									<Text style={styles.sectionTitle}>PEOPLE TO FOLLOW</Text>
+									<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.usersRow}>
+										{suggestedUsers.map((u) => (
+											<Pressable key={u.id} style={styles.userCard} onPress={() => router.push(`/user/${u.id}` as any)}>
+												<View style={styles.userAvatar}>{u.avatar_url ? <Image source={{ uri: u.avatar_url }} style={styles.userAvatarImg} contentFit="cover" /> : <View style={[styles.userAvatarImg, { backgroundColor: Colors.secundaire }]} />}</View>
+												<Text style={styles.userName} numberOfLines={1}>
+													{u.display_name}
+												</Text>
+												<Pressable
+													style={[styles.followBtn, u.is_following && styles.followBtnActive]}
+													onPress={(e) => {
+														e.stopPropagation?.();
+														!u.is_following && handleFollow(u.id);
+													}}
+													disabled={u.is_following}
+												>
+													<Text style={styles.followBtnText}>{u.is_following ? "Following" : "Follow"}</Text>
+												</Pressable>
+											</Pressable>
+										))}
+									</ScrollView>
+								</View>
+							)}
+
+							{/* Following activity */}
+							{visibleSections.activity && (
+								<View style={styles.section}>
+									<View style={styles.feedHeaderRow}>
+										<Text style={styles.feedSectionTitle}>FOLLOWING ACTIVITY</Text>
+										<Pressable style={styles.timeFilterBtn} onPress={() => setFilterMenuOpen((v) => !v)}>
+											<Text style={styles.timeFilterText}>{timeFilterLabels[timeFilter]}</Text>
+											<ChevronDown size={14} color={Colors.white70} strokeWidth={2.2} />
+										</Pressable>
+									</View>
+
+									{filterMenuOpen && (
+										<View style={styles.timeFilterMenu}>
+											{(["all", "1h", "1d", "7d"] as const).map((opt) => (
+												<Pressable
+													key={opt}
+													style={[styles.timeFilterOption, timeFilter === opt && styles.timeFilterOptionActive]}
+													onPress={() => {
+														setTimeFilter(opt);
+														setFilterMenuOpen(false);
+													}}
+												>
+													<Text style={[styles.timeFilterOptionText, timeFilter === opt && styles.timeFilterOptionTextActive]}>{timeFilterLabels[opt]}</Text>
+												</Pressable>
+											))}
+										</View>
+									)}
+
+									{loading ? (
+										<Text style={styles.muted}>Loading feed...</Text>
+									) : filteredFeed.length === 0 ? (
+										<Text style={styles.muted}>{feed.length === 0 ? "Follow people to see their activity here." : "No activity in this period."}</Text>
+									) : (
+										filteredFeed.map((item) => (
+											<Pressable key={item.id} style={styles.feedCard} onPress={() => router.push(`/user/${item.user_id}` as any)}>
+												<View style={styles.feedHeader}>
+													<View style={styles.feedAvatar}>
+														{item.user?.avatar_url ? <Image source={{ uri: item.user.avatar_url }} style={styles.feedAvatarImg} contentFit="cover" /> : <View style={[styles.feedAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+													</View>
+													<View style={{ flex: 1 }}>
+														<Text style={styles.feedUserName}>{item.user?.display_name ?? "Someone"}</Text>
+														<Text style={styles.feedTime}>{timeAgo(item.created_at)}</Text>
+													</View>
+												</View>
+												<Text style={styles.feedAction}>
+													{item.action_type === "scanned" && (
+														<>
+															Unlocked <Text style={styles.feedHighlight}>{item.card?.creature_name ?? "a new card"}</Text>
+															{item.race ? ` at ${item.race.name}` : ""}
+														</>
+													)}
+													{item.action_type === "joined_race" && (
+														<>
+															Joined <Text style={styles.feedHighlight}>{item.race?.name ?? "a race"}</Text>
+														</>
+													)}
+													{item.action_type === "challenged" && (
+														<>
+															Joined the challenge <Text style={styles.feedHighlight}>{item.challenge?.title ?? ""}</Text>
+														</>
+													)}
+													{item.action_type === "followed" && (
+														<>
+															Started following <Text style={styles.feedHighlight}>{item.target_user?.display_name ?? "someone"}</Text>
+														</>
+													)}
+													{item.action_type === "card_featured" && (
+														<>
+															Featured <Text style={styles.feedHighlight}>{item.card?.creature_name ?? "a card"}</Text> on their profile
+														</>
+													)}
+												</Text>
+											</Pressable>
+										))
+									)}
+								</View>
+							)}
+						</>
+					)}
 				</ScrollView>
 			</SafeAreaView>
+
+			<Modal visible={sectionFilterOpen} transparent animationType="fade" onRequestClose={() => setSectionFilterOpen(false)}>
+				<Pressable style={styles.modalBackdrop} onPress={() => setSectionFilterOpen(false)}>
+					<Pressable style={styles.filterCard} onPress={(e) => e.stopPropagation()}>
+						<View style={styles.filterHeader}>
+							<Text style={styles.filterTitle}>Show sections</Text>
+							<Pressable onPress={() => setSectionFilterOpen(false)}>
+								<X size={20} color={Colors.white} strokeWidth={2.4} />
+							</Pressable>
+						</View>
+						{(
+							[
+								{ key: "challenges", label: "Suggested Challenges" },
+								{ key: "people", label: "People to Follow" },
+								{ key: "activity", label: "Following Activity" },
+							] as const
+						).map((opt) => (
+							<Pressable key={opt.key} style={styles.filterRow} onPress={() => setVisibleSections((s) => ({ ...s, [opt.key]: !s[opt.key] }))}>
+								<Text style={styles.filterRowText}>{opt.label}</Text>
+								<View style={[styles.filterCheckbox, visibleSections[opt.key] && styles.filterCheckboxActive]}>{visibleSections[opt.key] && <Check size={14} color={Colors.white} strokeWidth={3} />}</View>
+							</Pressable>
+						))}
+						<Pressable style={styles.filterDone} onPress={() => setSectionFilterOpen(false)}>
+							<Text style={styles.filterDoneText}>Done</Text>
+						</Pressable>
+					</Pressable>
+				</Pressable>
+			</Modal>
 		</CosmicBackground>
 	);
 }
@@ -405,4 +480,25 @@ const styles = StyleSheet.create({
 	},
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.base },
+
+	modalBackdrop: { flex: 1, backgroundColor: "rgba(4,8,26,0.82)", alignItems: "center", justifyContent: "center" },
+	filterCard: { width: 320, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.white15, padding: Spacing.lg },
+	filterHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.base },
+	filterTitle: { 	fontFamily: Fonts.display,
+	fontStyle: "italic",
+	fontSize: 22,   // 22
+	color: Colors.white,
+	letterSpacing: 0, },
+	filterRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
+	filterRowText: { fontFamily: Fonts.body, fontSize: 15, color: Colors.white },
+	filterCheckbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: Colors.white30, alignItems: "center", justifyContent: "center" },
+	filterCheckboxActive: { backgroundColor: Colors.secundaire, borderColor: Colors.secundaire },
+	filterDone: { marginTop: Spacing.lg, paddingVertical: 12, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, alignItems: "center" },
+	filterDoneText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
+
+	searchResultRow: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: Spacing.lg, padding: 10, backgroundColor: Colors.white08, borderRadius: Radius.lg, marginBottom: 8 },
+	searchAvatar: { width: 44, height: 44, borderRadius: 22, overflow: "hidden" },
+	searchAvatarImg: { width: "100%", height: "100%" },
+	searchName: { flex: 1, fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
+	followingTag: { fontFamily: Fonts.body, fontSize: 11, color: Colors.white50 },
 });

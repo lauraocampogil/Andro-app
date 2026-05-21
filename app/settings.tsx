@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
 	backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	title: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 22, color: Colors.white, letterSpacing: 1 },
 
-	sectionTitle: { fontFamily: Fonts.bodyBold, fontSize: 12, fontWeight: "800", color: Colors.white70, letterSpacing: 2, paddingHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: 8 },
+	sectionTitle: { fontFamily: Fonts.display, fontSize: 12, fontWeight: "800", color: Colors.white70, letterSpacing: 0, paddingHorizontal: Spacing.lg, marginTop: Spacing.lg, marginBottom: 8 },
 	sectionSubTitle: { fontFamily: Fonts.body, fontSize: 12, color: Colors.white50, paddingHorizontal: Spacing.lg, marginTop: Spacing.sm, marginBottom: 6, letterSpacing: 0.5 },
 	sectionDesc: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70, paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm },
 
