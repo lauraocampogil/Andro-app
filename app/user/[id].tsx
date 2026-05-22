@@ -1,5 +1,5 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
-import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
 import { Challenge, daysLeft } from "@/lib/challenges";
@@ -7,6 +7,7 @@ import { cancelFollowRequest, checkFollowStatus, FollowRequestStatus, requestOrF
 import { getFollowersCount, getFollowingCount, unfollowUser } from "@/lib/follows";
 import { MuseumCard } from "@/lib/museum";
 import { fetchPublicActiveChallenges, fetchPublicMuseumCards, fetchPublicProfile, PublicProfile } from "@/lib/userProfile";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Clock, Lock, Star, UserPlus, X } from "lucide-react-native";
@@ -66,28 +67,19 @@ export default function UserProfile() {
 	const featuredImage = featuredCard ? resolveCardImage(featuredCard) : null;
 	const cardWidth = (SCREEN_W - Spacing.lg * 2 - Spacing.sm) / 2;
 
-	const isPrivate = profile?.account_private ?? false;
-const canViewContent = isMyOwnProfile || followStatus === "following" || !isPrivate;
-
 	const handleFollow = async () => {
 		if (!currentUserId || !id) return;
-
 		if (followStatus === "following") {
-			// Unfollow
 			setFollowStatus("none");
 			setFollowers((c) => Math.max(0, c - 1));
 			await unfollowUser(currentUserId, id);
 		} else if (followStatus === "pending") {
-			// Cancel pending request
 			setFollowStatus("none");
 			await cancelFollowRequest(currentUserId, id);
 		} else {
-			// Send request or follow directly depending on privacy
 			const newStatus = await requestOrFollow(currentUserId, id);
 			setFollowStatus(newStatus);
-			if (newStatus === "following") {
-				setFollowers((c) => c + 1);
-			}
+			if (newStatus === "following") setFollowers((c) => c + 1);
 		}
 	};
 
@@ -109,6 +101,8 @@ const canViewContent = isMyOwnProfile || followStatus === "following" || !isPriv
 	}
 
 	const isMyOwnProfile = currentUserId === id;
+	const isPrivate = profile?.account_private ?? false;
+	const canViewContent = isMyOwnProfile || followStatus === "following" || !isPrivate;
 
 	return (
 		<CosmicBackground>
@@ -166,108 +160,117 @@ const canViewContent = isMyOwnProfile || followStatus === "following" || !isPriv
 					</View>
 
 					{canViewContent ? (
-    <>
-
-					{/* Featured card */}
-					{featuredCard && featuredImage && (
-						<View style={styles.featuredSection}>
-							<Text style={styles.sectionTitle}>FEATURED CARD</Text>
-							<Pressable onPress={() => setExpandedCard(featuredCard)} style={styles.featuredCard}>
-								<Image source={featuredImage} style={styles.featuredImage} contentFit="cover" />
-								<View style={styles.featuredOverlay}>
-									<Star size={16} color={Colors.white} fill={Colors.white} strokeWidth={2} />
+						<>
+							{/* Featured card */}
+							{featuredCard && featuredImage && (
+								<View style={styles.featuredSection}>
+									<Text style={styles.sectionTitle}>Featured card</Text>
+									<Pressable onPress={() => setExpandedCard(featuredCard)} style={styles.featuredCard}>
+										<Image source={featuredImage} style={styles.featuredImage} contentFit="cover" />
+										<View style={styles.featuredOverlay}>
+											<Star size={16} color={Colors.white} fill={Colors.white} strokeWidth={2} />
+										</View>
+									</Pressable>
+									<Text style={styles.featuredName}>{featuredCard.creature_name}</Text>
+									<Text style={styles.featuredLocation}>
+										{featuredCard.race.city}, {featuredCard.race.country}
+									</Text>
 								</View>
-							</Pressable>
-							<Text style={styles.featuredName}>{featuredCard.creature_name}</Text>
-							<Text style={styles.featuredLocation}>
-								{featuredCard.race.city}, {featuredCard.race.country}
-							</Text>
-						</View>
-					)}
+							)}
 
-					{/* Active challenges */}
-					{challenges.length > 0 && (
-						<View style={styles.section}>
-							<Text style={styles.sectionTitle}>ACTIVE CHALLENGES</Text>
-							{challenges.map((c) => (
-								<View key={c.id} style={styles.challengeCard}>
-									<Text style={styles.challengeTitle}>{c.title}</Text>
-									<Text style={styles.challengeMeta}>{daysLeft(c.deadline)}</Text>
-									<View style={styles.progressBar}>
-										<View style={[styles.progressFill, { width: `${Math.min(100, (c.user_progress ?? 0) * 100)}%` }]} />
-									</View>
-								</View>
-							))}
-						</View>
-					)}
-
-					{/* Collection */}
-					<View style={styles.section}>
-						<Text style={styles.sectionTitle}>COLLECTION</Text>
-
-						<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
-							{CONTINENTS.map((c) => (
-								<Pressable key={c} style={[styles.pill, continent === c && styles.pillActive]} onPress={() => setContinent(c)}>
-									<Text style={[styles.pillText, continent === c && styles.pillTextActive]}>{c}</Text>
-								</Pressable>
-							))}
-						</ScrollView>
-
-						{loading ? (
-							<Text style={styles.muted}>Loading...</Text>
-						) : filteredCards.length === 0 ? (
-							<Text style={styles.muted}>No cards in this continent yet.</Text>
-						) : (
-							<View style={styles.grid}>
-								{filteredCards.map((card) => {
-									const image = card.unlocked ? resolveCardImage(card) : null;
-									const isFeatured = card.id === profile?.featured_card_id;
-									return (
-										<Pressable key={card.id} style={[styles.cardItem, { width: cardWidth }]} onPress={() => handleCardPress(card)}>
-											<View style={[styles.cardImageWrap, { aspectRatio: 3 / 4 }, isFeatured && styles.cardImageFeatured]}>
-												{card.unlocked && image ? (
-													<Image source={image} style={styles.cardImage} contentFit="cover" />
-												) : (
-													<View style={styles.cardLocked}>
-														<Lock size={28} color={Colors.white50} strokeWidth={2} />
-														<Text style={styles.cardLockedQ}>???</Text>
-													</View>
-												)}
-												{card.unlocked && (
-													<View style={[styles.rarityBadge, card.rarity === "legendary" && styles.rarityLegendary]}>
-														<Text style={styles.rarityText}>{card.rarity.toUpperCase()}</Text>
-													</View>
-												)}
-												{isFeatured && (
-													<View style={styles.featuredStar}>
-														<Star size={14} color={Colors.white} fill={Colors.white} strokeWidth={2} />
-													</View>
-												)}
+							{/* Active challenges */}
+							{challenges.length > 0 && (
+								<View style={styles.section}>
+									<Text style={styles.sectionTitle}>Active challenges</Text>
+									{challenges.map((c) => (
+										<View key={c.id} style={styles.challengeCard}>
+											<Text style={styles.challengeTitle}>{c.title}</Text>
+											<Text style={styles.challengeMeta}>{daysLeft(c.deadline)}</Text>
+											<View style={styles.progressBar}>
+												<View style={[styles.progressFill, { width: `${Math.min(100, (c.user_progress ?? 0) * 100)}%` }]} />
 											</View>
-											<Text style={styles.cardName} numberOfLines={1}>
-												{card.unlocked ? card.creature_name : "???"}
-											</Text>
-											<Text style={styles.cardLocation} numberOfLines={1}>
-												{card.unlocked ? `${card.race.city}, ${card.race.country_code}` : card.race.continent}
-											</Text>
+										</View>
+									))}
+								</View>
+							)}
+
+							{/* Collection */}
+							<View style={styles.section}>
+								<Text style={styles.sectionTitle}>Collection</Text>
+
+								<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
+									{CONTINENTS.map((c) => (
+										<Pressable key={c} style={[styles.pill, continent === c && styles.pillActive]} onPress={() => setContinent(c)}>
+											<Text style={[styles.pillText, continent === c && styles.pillTextActive]}>{c}</Text>
 										</Pressable>
-									);
-								})}
+									))}
+								</ScrollView>
+
+								{loading ? (
+									<Text style={styles.muted}>Loading...</Text>
+								) : filteredCards.length === 0 ? (
+									<Text style={styles.muted}>No cards in this continent yet.</Text>
+								) : (
+									<View style={styles.grid}>
+										{filteredCards.map((card) => {
+											const image = resolveCardImage(card);
+											const isFeatured = card.id === profile?.featured_card_id;
+											return (
+												<Pressable key={card.id} style={[styles.cardItem, { width: cardWidth }]} onPress={() => handleCardPress(card)}>
+													<View style={[styles.cardImageWrap, { aspectRatio: 3 / 4 }, isFeatured && styles.cardImageFeatured]}>
+														{image ? (
+															<>
+																<Image source={image} style={styles.cardImage} contentFit="cover" />
+																{!card.unlocked && (
+																	<>
+																		<BlurView intensity={38} tint="dark" style={StyleSheet.absoluteFill} />
+																		<View style={styles.lockedOverlay}>
+																			<Lock size={26} color={Colors.white} strokeWidth={2.2} />
+																		</View>
+																	</>
+																)}
+															</>
+														) : (
+															<View style={styles.cardLocked}>
+																<Lock size={28} color={Colors.white50} strokeWidth={2} />
+																<Text style={styles.cardLockedQ}>???</Text>
+															</View>
+														)}
+														{card.unlocked && (
+															<View style={[styles.rarityBadge, card.rarity === "legendary" && styles.rarityLegendary]}>
+																<Text style={styles.rarityText}>{card.rarity.toUpperCase()}</Text>
+															</View>
+														)}
+														{isFeatured && (
+															<View style={styles.featuredStar}>
+																<Star size={14} color={Colors.white} fill={Colors.white} strokeWidth={2} />
+															</View>
+														)}
+													</View>
+													<Text style={styles.cardName} numberOfLines={1}>
+														{card.unlocked ? card.creature_name : "???"}
+													</Text>
+													<Text style={styles.cardLocation} numberOfLines={1}>
+														{card.unlocked ? `${card.race.city}, ${card.race.country_code}` : card.race.continent}
+													</Text>
+												</Pressable>
+											);
+										})}
+									</View>
+								)}
 							</View>
-						)}
-					</View>
-					</>
+						</>
 					) : (
-    <View style={styles.privateBox}>
-        <Lock size={40} color={Colors.white50} strokeWidth={2} />
-        <Text style={styles.privateTitle}>This account is private</Text>
-        <Text style={styles.privateDesc}>Follow this account to see their cards and challenges.</Text>
-    </View>
-)}
+						<View style={styles.privateBox}>
+							<Lock size={40} color={Colors.white50} strokeWidth={2} />
+							<Text style={styles.privateTitle}>This account is private</Text>
+							<Text style={styles.privateDesc}>Follow this account to see their cards and challenges.</Text>
+						</View>
+					)}
 				</ScrollView>
 			</SafeAreaView>
 
-			{/* Expanded card (read-only, no Set as Featured button) */}
+			{/* Expanded card (read-only) */}
 			<Modal visible={expandedCard !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setExpandedCard(null)}>
 				<View style={{ flex: 1 }}>
 					<CosmicBackground>
@@ -329,7 +332,7 @@ const styles = StyleSheet.create({
 	profileTop: { alignItems: "center", paddingHorizontal: Spacing.lg, marginTop: Spacing.base, marginBottom: Spacing.xl },
 	avatar: { width: 96, height: 96, borderRadius: 48, overflow: "hidden", borderWidth: 3, borderColor: Colors.secundaire, marginBottom: Spacing.base },
 	avatarImg: { width: "100%", height: "100%" },
-	name: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 26, color: Colors.white, marginBottom: Spacing.sm },
+	name: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h2, color: Colors.white, marginBottom: Spacing.sm },
 
 	followBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, marginBottom: Spacing.base },
 	followBtnFollowing: { backgroundColor: Colors.white15 },
@@ -350,7 +353,7 @@ const styles = StyleSheet.create({
 	featuredLocation: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70 },
 
 	section: { marginBottom: Spacing.xl },
-	sectionTitle: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white, letterSpacing: 2, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md, textAlign: "center" },
+	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md, textAlign: "center" },
 
 	challengeCard: { marginHorizontal: Spacing.lg, backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.base, marginBottom: Spacing.sm },
 	challengeTitle: { fontFamily: Fonts.bodyBold, fontSize: 15, fontWeight: "800", color: Colors.ink, marginBottom: 4 },
@@ -371,12 +374,17 @@ const styles = StyleSheet.create({
 	cardImage: { width: "100%", height: "100%" },
 	cardLocked: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a1d3a", gap: 8 },
 	cardLockedQ: { fontFamily: Fonts.display, fontSize: 24, fontStyle: "italic", color: Colors.white50, letterSpacing: 2 },
+	lockedOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
 	rarityBadge: { position: "absolute", top: 8, right: 8, backgroundColor: Colors.secundaire, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
 	rarityLegendary: { backgroundColor: "#FFD15C" },
 	rarityText: { fontFamily: Fonts.bodyBold, fontSize: 9, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },
 	featuredStar: { position: "absolute", top: 8, left: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: "#FFD15C", alignItems: "center", justifyContent: "center" },
 	cardName: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white, marginBottom: 2 },
 	cardLocation: { fontFamily: Fonts.body, fontSize: 11, color: Colors.white70 },
+
+	privateBox: { alignItems: "center", paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.lg, gap: 8 },
+	privateTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white },
+	privateDesc: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70, textAlign: "center" },
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingVertical: Spacing.lg, paddingHorizontal: Spacing.lg },
 

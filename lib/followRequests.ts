@@ -15,7 +15,8 @@ export async function checkFollowStatus(currentUserId: string, targetUserId: str
 }
 
 export async function isAccountPrivate(userId: string): Promise<boolean> {
-	const { data } = await supabase.from("user_settings").select("account_private").eq("user_id", userId).maybeSingle();
+	// Reads from profiles (publicly readable) — works even for other users
+	const { data } = await supabase.from("profiles").select("account_private").eq("id", userId).maybeSingle();
 	return data?.account_private ?? false;
 }
 
@@ -23,6 +24,9 @@ export async function requestOrFollow(currentUserId: string, targetUserId: strin
 	const isPrivate = await isAccountPrivate(targetUserId);
 
 	if (isPrivate) {
+		// Remove any stale request for this pair first (avoids 23505 unique-key violation)
+		await supabase.from("follow_requests").delete().eq("requester_id", currentUserId).eq("target_id", targetUserId);
+
 		const { error } = await supabase.from("follow_requests").insert({ requester_id: currentUserId, target_id: targetUserId });
 		if (error) {
 			console.error("requestOrFollow (private) error:", JSON.stringify(error));
