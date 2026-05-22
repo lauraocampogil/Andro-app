@@ -13,6 +13,7 @@ export type Challenge = {
 	target_count?: number | null;
 	duration_days?: number | null;
 	deadline: string | null;
+	visibility?: string;
 	created_by: string;
 	created_at: string;
 	participants_count?: number;
@@ -111,6 +112,11 @@ export async function joinChallenge(userId: string, challengeId: string): Promis
 	return !error;
 }
 
+export async function fetchPublicChallenges(currentUserId: string): Promise<Challenge[]> {
+	const { data } = await supabase.from("challenges").select("*").eq("visibility", "public").neq("created_by", currentUserId).order("created_at", { ascending: false }).limit(20);
+	return data ?? [];
+}
+
 export async function createChallenge(params: {
 	created_by: string;
 	type: ChallengeType;
@@ -122,6 +128,7 @@ export async function createChallenge(params: {
 	target_count?: number | null;
 	duration_days?: number | null;
 	deadline?: string | null;
+	visibility?: string;
 	invited_user_ids?: string[];
 }): Promise<string | null> {
 	const { data, error } = await supabase
@@ -136,6 +143,7 @@ export async function createChallenge(params: {
 			race_id: params.race_id,
 			target_count: params.target_count,
 			duration_days: params.duration_days,
+			visibility: params.visibility ?? "everyone",
 			deadline: params.deadline ?? (params.duration_days ? new Date(Date.now() + params.duration_days * 86400000).toISOString() : null),
 		})
 		.select("id")
@@ -146,10 +154,8 @@ export async function createChallenge(params: {
 		return null;
 	}
 
-	// Creator auto-joins
 	await supabase.from("challenge_participants").insert({ challenge_id: data.id, user_id: params.created_by });
 
-	// Send invitations to friends
 	if (params.invited_user_ids && params.invited_user_ids.length > 0) {
 		await supabase.from("challenge_invitations").insert(
 			params.invited_user_ids.map((invitee_id) => ({

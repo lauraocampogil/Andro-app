@@ -1,6 +1,6 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
-import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { ChallengeType, createChallenge } from "@/lib/challenges";
 import { fetchAllRaces, Race } from "@/lib/races";
@@ -9,7 +9,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Globe, Map, Swords, Target, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const TEMPLATES = [
@@ -41,6 +41,8 @@ export default function CreateChallenge() {
 	const [count, setCount] = useState<number | null>(null);
 	const [duration, setDuration] = useState<number | null>(null);
 	const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+	const [isPublic, setIsPublic] = useState(false);
+	const [creating, setCreating] = useState(false);
 
 	const [races, setRaces] = useState<Race[]>([]);
 	const [followings, setFollowings] = useState<any[]>([]);
@@ -89,13 +91,16 @@ export default function CreateChallenge() {
 		return false;
 	};
 
-	const handleCreate = async () => {
-		if (!userId || !selectedType) return;
-		if (selectedFriends.length === 0) {
+	const handleCreate = async (publicMode: boolean) => {
+		if (!userId || !selectedType || creating) return;
+
+		// A non-public challenge needs at least one friend
+		if (!publicMode && selectedFriends.length === 0) {
 			Alert.alert("Pick at least one friend", "You need to challenge someone.");
 			return;
 		}
 
+		setCreating(true);
 		const challengeId = await createChallenge({
 			created_by: userId,
 			type: selectedType,
@@ -105,14 +110,25 @@ export default function CreateChallenge() {
 			race_id: raceId,
 			target_count: count,
 			duration_days: duration,
-			invited_user_ids: selectedFriends,
+			visibility: publicMode ? "public" : "everyone",
+			invited_user_ids: publicMode ? [] : selectedFriends,
 		});
+		setCreating(false);
 
 		if (challengeId) {
-			Alert.alert("Challenge sent!", `Invitations sent to ${selectedFriends.length} friend(s).`);
+			Alert.alert(publicMode ? "Public challenge created!" : "Challenge sent!", publicMode ? "Anyone can now discover and join it." : `Invitations sent to ${selectedFriends.length} friend(s).`);
 			router.back();
 		} else {
 			Alert.alert("Error", "Could not create challenge.");
+		}
+	};
+
+	// On the details step, "Next" either creates directly (public) or goes to friends
+	const handleDetailsNext = () => {
+		if (isPublic) {
+			handleCreate(true);
+		} else {
+			setStep("friends");
 		}
 	};
 
@@ -130,7 +146,7 @@ export default function CreateChallenge() {
 					>
 						<X size={22} color={Colors.white} strokeWidth={2.4} />
 					</Pressable>
-					<Text style={styles.title}>{step === "template" ? "NEW CHALLENGE" : step === "details" ? "DETAILS" : "INVITE FRIENDS"}</Text>
+					<Text style={styles.title}>{step === "template" ? "New challenge" : step === "details" ? "Details" : "Invite friends"}</Text>
 					<View style={{ width: 44 }} />
 				</View>
 
@@ -256,8 +272,18 @@ export default function CreateChallenge() {
 								</>
 							)}
 
+							{/* Public challenge toggle */}
+							<Text style={styles.label}>Visibility</Text>
+							<View style={styles.publicRow}>
+								<View style={{ flex: 1 }}>
+									<Text style={styles.publicTitle}>Public challenge</Text>
+									<Text style={styles.publicDesc}>Anyone can discover and join. Great for communities and influencers. No friend invites needed.</Text>
+								</View>
+								<Switch value={isPublic} onValueChange={setIsPublic} trackColor={{ false: Colors.white15, true: Colors.secundaire }} thumbColor={Colors.white} />
+							</View>
+
 							<View style={{ marginTop: Spacing.xl }}>
-								<Button label="Pick friends" onPress={() => setStep("friends")} disabled={!canProceedToFriends()} />
+								<Button label={isPublic ? (creating ? "Creating..." : "Create public challenge") : "Pick friends"} onPress={handleDetailsNext} disabled={!canProceedToFriends() || creating} />
 							</View>
 						</View>
 					)}
@@ -287,7 +313,7 @@ export default function CreateChallenge() {
 							)}
 
 							<View style={{ marginTop: Spacing.xl }}>
-								<Button label={`Send challenge (${selectedFriends.length})`} onPress={handleCreate} disabled={selectedFriends.length === 0} />
+								<Button label={creating ? "Sending..." : `Send challenge (${selectedFriends.length})`} onPress={() => handleCreate(false)} disabled={selectedFriends.length === 0 || creating} />
 							</View>
 						</View>
 					)}
@@ -300,7 +326,7 @@ export default function CreateChallenge() {
 const styles = StyleSheet.create({
 	header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.lg },
 	backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
-	title: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 18, color: Colors.white, letterSpacing: 1 },
+	title: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h2, color: Colors.white, letterSpacing: 0 },
 	subtitle: { fontFamily: Fonts.body, fontSize: 14, color: Colors.white70, marginBottom: Spacing.md, paddingHorizontal: Spacing.base },
 
 	template: { flexDirection: "row", alignItems: "center", gap: Spacing.base, padding: Spacing.base, backgroundColor: Colors.white08, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.white15 },
@@ -319,6 +345,10 @@ const styles = StyleSheet.create({
 	raceItemActive: { borderColor: Colors.secundaire, backgroundColor: "rgba(91, 88, 235, 0.18)" },
 	raceName: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
 	raceMeta: { fontFamily: Fonts.body, fontSize: 12, color: Colors.white70, marginTop: 2 },
+
+	publicRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: Spacing.base, backgroundColor: Colors.white08, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.white15 },
+	publicTitle: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
+	publicDesc: { fontFamily: Fonts.body, fontSize: 12, color: Colors.white70, marginTop: 2 },
 
 	friendItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, backgroundColor: Colors.white08, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.white15 },
 	friendItemActive: { borderColor: Colors.secundaire, backgroundColor: "rgba(91, 88, 235, 0.18)" },
