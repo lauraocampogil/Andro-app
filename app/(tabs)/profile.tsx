@@ -1,7 +1,7 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
 import { countUnreadMessages } from "@/lib/challengeMessages";
@@ -9,6 +9,7 @@ import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants 
 import { getFollowersCount, getFollowingCount } from "@/lib/follows";
 import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unsetFeaturedCard } from "@/lib/museum";
 import { supabase } from "@/lib/supabase";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Check, ChevronRight, ListFilter, Lock, Settings, Star, X } from "lucide-react-native";
@@ -40,7 +41,6 @@ export default function Profile() {
 		collection: true,
 	});
 
-	// Museum modal states
 	const [lockedModal, setLockedModal] = useState<MuseumCard | null>(null);
 	const [expandedCard, setExpandedCard] = useState<MuseumCard | null>(null);
 
@@ -58,8 +58,6 @@ export default function Profile() {
 					getFollowingCount(userId),
 					fetchActiveChallenges(userId),
 				]);
-				console.log("[FOCUS] featured_card_id from DB:", fid);
-				console.log("[FOCUS] userId:", userId);
 				if (!cancelled) {
 					setProfile(prof ?? null);
 					setCards(museum);
@@ -99,14 +97,11 @@ export default function Profile() {
 
 	const handleSetFeatured = async () => {
 		if (!userId || !expandedCard) return;
-		console.log("[FEATURED] before:", { isExpandedFeatured, cardId: expandedCard.id, userId });
 		if (isExpandedFeatured) {
 			const ok = await unsetFeaturedCard(userId);
-			console.log("[FEATURED] unset result:", ok);
 			if (ok) setFeaturedId(null);
 		} else {
 			const ok = await setFeaturedCard(userId, expandedCard.id);
-			console.log("[FEATURED] set result:", ok);
 			if (ok) setFeaturedId(expandedCard.id);
 		}
 	};
@@ -156,7 +151,7 @@ export default function Profile() {
 					{/* Featured card */}
 					{visibleSections.featured && featuredCard && featuredImage && (
 						<View style={styles.featuredSection}>
-							<Text style={styles.sectionTitle}>FEATURED CARD</Text>
+							<Text style={styles.sectionTitle}>Featured card</Text>
 							<Pressable onPress={() => setExpandedCard(featuredCard)} style={styles.featuredCard}>
 								<Image source={featuredImage} style={styles.featuredImage} contentFit="cover" />
 								<View style={styles.featuredOverlay}>
@@ -173,7 +168,7 @@ export default function Profile() {
 					{/* Active challenges */}
 					{visibleSections.challenges && challenges.length > 0 && (
 						<View style={styles.section}>
-							<Text style={styles.sectionTitle}>ACTIVE CHALLENGES</Text>
+							<Text style={styles.sectionTitle}>Active challenges</Text>
 							{challenges.map((c) => (
 								<Pressable key={c.id} style={styles.challengeCard} onPress={() => router.push(`/challenge/${c.id}` as any)}>
 									<View style={styles.challengeCardTop}>
@@ -195,7 +190,7 @@ export default function Profile() {
 					{/* Collection */}
 					{visibleSections.collection && (
 						<View style={styles.section}>
-							<Text style={styles.sectionTitle}>MY COLLECTION</Text>
+							<Text style={styles.sectionTitle}>My collection</Text>
 
 							<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
 								{CONTINENTS.map((c) => (
@@ -226,7 +221,7 @@ export default function Profile() {
 				<Pressable style={styles.modalBackdrop} onPress={() => setFilterModalOpen(false)}>
 					<Pressable style={styles.filterCard} onPress={(e) => e.stopPropagation()}>
 						<View style={styles.filterHeader}>
-							<Text style={styles.filterTitle}>SHOW SECTIONS</Text>
+							<Text style={styles.filterTitle}>Show sections</Text>
 							<Pressable onPress={() => setFilterModalOpen(false)}>
 								<X size={20} color={Colors.white} strokeWidth={2.4} />
 							</Pressable>
@@ -286,7 +281,7 @@ export default function Profile() {
 				</Pressable>
 			</Modal>
 
-			{/* Expanded card modal (full screen, opaque) */}
+			{/* Expanded card modal */}
 			<Modal visible={expandedCard !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setExpandedCard(null)}>
 				<View style={styles.expandedContainer}>
 					<CosmicBackground>
@@ -349,14 +344,24 @@ export default function Profile() {
 }
 
 function MuseumCardItem({ card, width, isFeatured, onPress }: { card: MuseumCard; width: number; isFeatured: boolean; onPress: () => void }) {
-	const image = card.unlocked ? resolveCardImage(card) : null;
+	const image = resolveCardImage(card);
 	const aspectRatio = 3 / 4;
 
 	return (
 		<Pressable style={[styles.cardItem, { width }]} onPress={onPress}>
 			<View style={[styles.cardImageWrap, { aspectRatio }, isFeatured && styles.cardImageFeatured]}>
-				{card.unlocked && image ? (
-					<Image source={image} style={styles.cardImage} contentFit="cover" />
+				{image ? (
+					<>
+						<Image source={image} style={styles.cardImage} contentFit="cover" />
+						{!card.unlocked && (
+							<>
+								<BlurView intensity={38} tint="dark" style={StyleSheet.absoluteFill} />
+								<View style={styles.lockedOverlay}>
+									<Lock size={26} color={Colors.white} strokeWidth={2.2} />
+								</View>
+							</>
+						)}
+					</>
 				) : (
 					<View style={styles.cardLocked}>
 						<Lock size={28} color={Colors.white50} strokeWidth={2} />
@@ -436,7 +441,7 @@ const styles = StyleSheet.create({
 	profileTop: { alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.xl },
 	avatar: { width: 96, height: 96, borderRadius: 48, overflow: "hidden", borderWidth: 3, borderColor: Colors.secundaire, marginBottom: Spacing.base },
 	avatarImg: { width: "100%", height: "100%" },
-	name: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 26, color: Colors.white, marginBottom: Spacing.base },
+	name: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h2, color: Colors.white, marginBottom: Spacing.base },
 	statsRow: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.white08, borderRadius: Radius.lg, paddingVertical: 14, paddingHorizontal: Spacing.lg, gap: Spacing.lg },
 	statItem: { alignItems: "center" },
 	statNum: { fontFamily: Fonts.bodyBold, fontSize: 20, fontWeight: "800", color: Colors.white },
@@ -451,7 +456,7 @@ const styles = StyleSheet.create({
 	featuredLocation: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70 },
 
 	section: { marginBottom: Spacing.xl },
-	sectionTitle: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white, letterSpacing: 2, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md, textAlign: "center" },
+	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md, textAlign: "center" },
 
 	challengeCard: { marginHorizontal: Spacing.lg, backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.base, marginBottom: Spacing.sm },
 	challengeTitle: { fontFamily: Fonts.bodyBold, fontSize: 15, fontWeight: "800", color: Colors.ink, marginBottom: 4 },
@@ -472,6 +477,7 @@ const styles = StyleSheet.create({
 	cardImage: { width: "100%", height: "100%" },
 	cardLocked: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a1d3a", gap: 8 },
 	cardLockedQ: { fontFamily: Fonts.display, fontSize: 24, fontStyle: "italic", color: Colors.white50, letterSpacing: 2 },
+	lockedOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
 	rarityBadge: { position: "absolute", top: 8, right: 8, backgroundColor: Colors.secundaire, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
 	rarityLegendary: { backgroundColor: "#FFD15C" },
 	rarityText: { fontFamily: Fonts.bodyBold, fontSize: 9, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },
@@ -483,104 +489,24 @@ const styles = StyleSheet.create({
 	participantAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: Colors.white, overflow: "hidden" },
 	participantAvatarImg: { width: "100%", height: "100%" },
 
-	unreadBadge: {
-		minWidth: 22,
-		height: 22,
-		borderRadius: 11,
-		backgroundColor: "#FF5757",
-		alignItems: "center",
-		justifyContent: "center",
-		paddingHorizontal: 6,
-	},
-	unreadBadgeText: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 11,
-		fontWeight: "800",
-		color: Colors.white,
-	},
+	unreadBadge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: "#FF5757", alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+	unreadBadgeText: { fontFamily: Fonts.bodyBold, fontSize: 11, fontWeight: "800", color: Colors.white },
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingVertical: Spacing.lg, paddingHorizontal: Spacing.lg },
 
-	filterCard: {
-		width: 320,
-		backgroundColor: Colors.hoofdkleur,
-		borderRadius: Radius.xl,
-		borderWidth: 1,
-		borderColor: Colors.white15,
-		padding: Spacing.lg,
-	},
-	filterHeader: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		marginBottom: Spacing.base,
-	},
-	filterTitle: {
-		fontFamily: Fonts.display,
-		fontStyle: "italic",
-		fontSize: 18,
-		color: Colors.white,
-		letterSpacing: 1,
-	},
-	filterRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		paddingVertical: 14,
-		borderBottomWidth: 1,
-		borderBottomColor: Colors.white15,
-	},
-	filterRowText: {
-		fontFamily: Fonts.body,
-		fontSize: 15,
-		color: Colors.white,
-	},
-	filterCheckbox: {
-		width: 24,
-		height: 24,
-		borderRadius: 6,
-		borderWidth: 2,
-		borderColor: Colors.white30,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	filterCheckboxActive: {
-		backgroundColor: Colors.secundaire,
-		borderColor: Colors.secundaire,
-	},
-	filterFooter: {
-		flexDirection: "row",
-		gap: 10,
-		marginTop: Spacing.lg,
-	},
-	filterReset: {
-		flex: 1,
-		paddingVertical: 12,
-		borderRadius: Radius.pill,
-		backgroundColor: Colors.white15,
-		alignItems: "center",
-	},
-	filterResetText: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 14,
-		fontWeight: "800",
-		color: Colors.white,
-	},
-	filterApply: {
-		flex: 1,
-		paddingVertical: 12,
-		borderRadius: Radius.pill,
-		backgroundColor: Colors.secundaire,
-		alignItems: "center",
-	},
-	filterApplyText: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 14,
-		fontWeight: "800",
-		color: Colors.white,
-	},
+	filterCard: { width: 320, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.white15, padding: Spacing.lg },
+	filterHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.base },
+	filterTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0 },
+	filterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
+	filterRowText: { fontFamily: Fonts.body, fontSize: 15, color: Colors.white },
+	filterCheckbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: Colors.white30, alignItems: "center", justifyContent: "center" },
+	filterCheckboxActive: { backgroundColor: Colors.secundaire, borderColor: Colors.secundaire },
+	filterFooter: { flexDirection: "row", gap: 10, marginTop: Spacing.lg },
+	filterReset: { flex: 1, paddingVertical: 12, borderRadius: Radius.pill, backgroundColor: Colors.white15, alignItems: "center" },
+	filterResetText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
+	filterApply: { flex: 1, paddingVertical: 12, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, alignItems: "center" },
+	filterApplyText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
 
-	// Locked modal
 	modalBackdrop: { flex: 1, backgroundColor: "rgba(4, 8, 26, 0.82)", alignItems: "center", justifyContent: "center" },
 	modalCard: { width: 320, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.white15, padding: Spacing.lg, alignItems: "center" },
 	modalLockIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center", marginBottom: Spacing.base },
@@ -591,7 +517,6 @@ const styles = StyleSheet.create({
 	modalBtn: { width: "100%", height: 48, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, alignItems: "center", justifyContent: "center" },
 	modalBtnText: { fontFamily: Fonts.bodyBold, fontSize: 15, fontWeight: "800", color: Colors.white },
 
-	// Expanded modal
 	expandedContainer: { flex: 1 },
 	expandedHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.base, gap: Spacing.base },
 	expandedRarity: { fontFamily: Fonts.bodyBold, fontSize: 11, fontWeight: "800", color: Colors.violetLight, letterSpacing: 2, marginBottom: 2 },
@@ -599,13 +524,7 @@ const styles = StyleSheet.create({
 	expandedCloseBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	expandedCardWrap: { alignItems: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm },
 	expandedCardImage: { width: "100%", aspectRatio: 3 / 4, borderRadius: Radius.lg, maxHeight: 440 },
-	expandedCardClip: {
-		width: "100%",
-		aspectRatio: 3 / 4,
-		borderRadius: Radius.lg,
-		overflow: "hidden",
-		maxHeight: 440,
-	},
+	expandedCardClip: { width: "100%", aspectRatio: 3 / 4, borderRadius: Radius.lg, overflow: "hidden", maxHeight: 440 },
 	expandedFooter: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, gap: 8 },
 	expandedRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
 	expandedRowLabel: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70 },

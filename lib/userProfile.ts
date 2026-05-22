@@ -7,12 +7,13 @@ export type PublicProfile = {
 	display_name: string | null;
 	avatar_url: string | null;
 	featured_card_id: string | null;
+	account_private: boolean;
 };
 
 export async function fetchPublicProfile(userId: string): Promise<PublicProfile | null> {
-	const { data, error } = await supabase.from("profiles").select("id, display_name, avatar_url, featured_card_id").eq("id", userId).maybeSingle();
+	const { data, error } = await supabase.from("profiles").select("id, display_name, avatar_url, featured_card_id, account_private").eq("id", userId).maybeSingle();
 	if (error || !data) return null;
-	return data as PublicProfile;
+	return { ...data, account_private: data.account_private ?? false } as PublicProfile;
 }
 
 export async function fetchPublicMuseumCards(userId: string): Promise<MuseumCard[]> {
