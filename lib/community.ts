@@ -79,7 +79,7 @@ export type SuggestedUser = {
 	id: string;
 	display_name: string;
 	avatar_url: string | null;
-	is_following: boolean;
+	follow_status: "none" | "following" | "pending";
 };
 
 export async function fetchSuggestedUsers(currentUserId: string): Promise<SuggestedUser[]> {

@@ -66,6 +66,9 @@ export default function UserProfile() {
 	const featuredImage = featuredCard ? resolveCardImage(featuredCard) : null;
 	const cardWidth = (SCREEN_W - Spacing.lg * 2 - Spacing.sm) / 2;
 
+	const isPrivate = profile?.account_private ?? false;
+const canViewContent = isMyOwnProfile || followStatus === "following" || !isPrivate;
+
 	const handleFollow = async () => {
 		if (!currentUserId || !id) return;
 
@@ -162,6 +165,9 @@ export default function UserProfile() {
 						</View>
 					</View>
 
+					{canViewContent ? (
+    <>
+
 					{/* Featured card */}
 					{featuredCard && featuredImage && (
 						<View style={styles.featuredSection}>
@@ -250,6 +256,14 @@ export default function UserProfile() {
 							</View>
 						)}
 					</View>
+					</>
+					) : (
+    <View style={styles.privateBox}>
+        <Lock size={40} color={Colors.white50} strokeWidth={2} />
+        <Text style={styles.privateTitle}>This account is private</Text>
+        <Text style={styles.privateDesc}>Follow this account to see their cards and challenges.</Text>
+    </View>
+)}
 				</ScrollView>
 			</SafeAreaView>
 

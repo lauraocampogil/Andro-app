@@ -3,9 +3,9 @@ import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
-import { Challenge, daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge, SuggestedChallenge } from "@/lib/challenges";
+import { daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge, SuggestedChallenge } from "@/lib/challenges";
 import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, searchUsers, SuggestedUser, timeAgo } from "@/lib/community";
-import { followUser } from "@/lib/follows";
+import { requestOrFollow } from "@/lib/followRequests";
 import { countUnreadNotifications } from "@/lib/notifications";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -37,6 +37,12 @@ export default function Community() {
 
 	const [searchResults, setSearchResults] = useState<SuggestedUser[]>([]);
 	const [searching, setSearching] = useState(false);
+
+	const handleFollow = async (targetId: string) => {
+		if (!userId) return;
+		const status = await requestOrFollow(userId, targetId);
+		setSuggestedUsers((prev) => prev.map((u) => (u.id === targetId ? { ...u, follow_status: status } : u)));
+	};
 
 	useEffect(() => {
 		if (!userId) return;
@@ -218,15 +224,8 @@ export default function Community() {
 												<Text style={styles.userName} numberOfLines={1}>
 													{u.display_name}
 												</Text>
-												<Pressable
-													style={[styles.followBtn, u.is_following && styles.followBtnActive]}
-													onPress={(e) => {
-														e.stopPropagation?.();
-														!u.is_following && handleFollow(u.id);
-													}}
-													disabled={u.is_following}
-												>
-													<Text style={styles.followBtnText}>{u.is_following ? "Following" : "Follow"}</Text>
+												<Pressable style={[styles.followBtn, u.follow_status !== "none" && styles.followBtnActive]} onPress={() => handleFollow(u.id)} disabled={u.follow_status !== "none"}>
+													<Text style={styles.followBtnText}>{u.follow_status === "following" ? "Following" : u.follow_status === "pending" ? "Requested" : "Follow"}</Text>
 												</Pressable>
 											</Pressable>
 										))}

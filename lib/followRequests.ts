@@ -24,11 +24,17 @@ export async function requestOrFollow(currentUserId: string, targetUserId: strin
 
 	if (isPrivate) {
 		const { error } = await supabase.from("follow_requests").insert({ requester_id: currentUserId, target_id: targetUserId });
-		if (error) console.error("requestOrFollow error:", error);
+		if (error) {
+			console.error("requestOrFollow (private) error:", JSON.stringify(error));
+			return "none";
+		}
 		return "pending";
 	} else {
 		const { error } = await supabase.from("follows").insert({ follower_id: currentUserId, following_id: targetUserId });
-		if (error) console.error("follow error:", error);
+		if (error) {
+			console.error("requestOrFollow (public) error:", JSON.stringify(error));
+			return "none";
+		}
 		return "following";
 	}
 }
