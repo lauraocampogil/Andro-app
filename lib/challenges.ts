@@ -26,22 +26,18 @@ export async function fetchActiveChallenges(userId: string): Promise<Challenge[]
 }
 
 export type SuggestedChallenge = {
-	id: string; // ← ajouté : identifiant stable (= template_key)
-	template_key: string;
+	id: string;
 	type: ChallengeType;
 	title: string;
 	description: string;
 	continent: string | null;
 	distance_km: number | null;
 	target_count: number | null;
-	deadline: string; // ISO
-	duration_label: string; // human readable
+	deadline: string;
 	difficulty: "easy" | "medium" | "hard";
-	participants_count: number; // ← ajouté
 };
 
-// userId est accepté pour usage futur (filtrer les challenges déjà rejoints).
-export async function fetchSuggestedChallenges(userId?: string): Promise<SuggestedChallenge[]> {
+export async function fetchSuggestedChallenges(currentUserId: string): Promise<SuggestedChallenge[]> {
 	const now = new Date();
 	const addDays = (d: number) => {
 		const x = new Date(now);
@@ -52,22 +48,18 @@ export async function fetchSuggestedChallenges(userId?: string): Promise<Suggest
 
 	return [
 		{
-			id: "europe-10k-30d",
-			template_key: "europe-10k-30d",
+			id: "tmpl-color-europe",
 			type: "color_continent",
 			title: "Color Europe",
-			description: "Unlock 3 race cards across Europe before the deadline.",
+			description: "Unlock 3 race cards across Europe.",
 			continent: "Europe",
 			distance_km: null,
 			target_count: 3,
 			deadline: addDays(30),
-			duration_label: "30 days",
 			difficulty: "medium",
-			participants_count: 0,
 		},
 		{
-			id: "yearly-10-races",
-			template_key: "yearly-10-races",
+			id: "tmpl-10-races",
 			type: "yearly_races",
 			title: "10 Races This Year",
 			description: "Complete 10 races before December 31st.",
@@ -75,37 +67,29 @@ export async function fetchSuggestedChallenges(userId?: string): Promise<Suggest
 			distance_km: null,
 			target_count: 10,
 			deadline: endOfYear,
-			duration_label: `until Dec 31`,
 			difficulty: "hard",
-			participants_count: 0,
 		},
 		{
-			id: "marathon-sprint-14d",
-			template_key: "marathon-sprint-14d",
+			id: "tmpl-marathon-sprint",
 			type: "marathon_battle",
 			title: "Marathon Sprint",
-			description: "Be the first to finish a 42 km marathon within 2 weeks.",
+			description: "Finish a 42 km marathon within 2 weeks.",
 			continent: null,
 			distance_km: 42,
 			target_count: null,
 			deadline: addDays(14),
-			duration_label: "14 days",
 			difficulty: "hard",
-			participants_count: 0,
 		},
 		{
-			id: "weekend-warrior-7d",
-			template_key: "weekend-warrior-7d",
+			id: "tmpl-weekend-warrior",
 			type: "yearly_races",
 			title: "Weekend Warrior",
-			description: "Run 2 races this week. Quick and punchy.",
+			description: "Run 2 races this week.",
 			continent: null,
 			distance_km: null,
 			target_count: 2,
 			deadline: addDays(7),
-			duration_label: "7 days",
 			difficulty: "easy",
-			participants_count: 0,
 		},
 	];
 }

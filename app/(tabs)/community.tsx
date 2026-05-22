@@ -3,7 +3,7 @@ import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
-import { daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge, SuggestedChallenge } from "@/lib/challenges";
+import { createChallenge, daysLeft, fetchSuggestedChallenges, joinChallenge, SuggestedChallenge } from "@/lib/challenges";
 import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, searchUsers, SuggestedUser, timeAgo } from "@/lib/community";
 import { requestOrFollow } from "@/lib/followRequests";
 import { countUnreadNotifications } from "@/lib/notifications";
@@ -23,7 +23,6 @@ export default function Community() {
 	const [feed, setFeed] = useState<ActivityItem[]>([]);
 	const [suggested, setSuggested] = useState<SuggestedChallenge[]>([]);
 	const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
-	const [participantsByChallenge, setParticipantsByChallenge] = useState<Record<string, any[]>>({});
 	const [loading, setLoading] = useState(true);
 	const [timeFilter, setTimeFilter] = useState<"all" | "1h" | "1d" | "7d">("all");
 	const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -37,6 +36,7 @@ export default function Community() {
 
 	const [searchResults, setSearchResults] = useState<SuggestedUser[]>([]);
 	const [searching, setSearching] = useState(false);
+	const [joiningId, setJoiningId] = useState<string | null>(null);
 
 	const handleFollow = async (targetId: string) => {
 		if (!userId) return;
@@ -45,10 +45,26 @@ export default function Community() {
 		setSearchResults((prev) => prev.map((u) => (u.id === targetId ? { ...u, follow_status: status } : u)));
 	};
 
-	const handleJoin = async (challengeId: string) => {
-		if (!userId) return;
-		const ok = await joinChallenge(userId, challengeId);
-		if (ok) setSuggested((prev) => prev.filter((c) => c.id !== challengeId));
+	const handleJoin = async (tmpl: SuggestedChallenge) => {
+		if (!userId || joiningId) return;
+		setJoiningId(tmpl.id);
+		const newId = await createChallenge({
+			created_by: userId,
+			type: tmpl.type,
+			title: tmpl.title,
+			description: tmpl.description,
+			continent: tmpl.continent,
+			distance_km: tmpl.distance_km,
+			target_count: tmpl.target_count,
+			deadline: tmpl.deadline,
+			invited_user_ids: [],
+		});
+		setJoiningId(null);
+		if (newId) {
+			await joinChallenge(userId, newId);
+			setSuggested((prev) => prev.filter((c) => c.id !== tmpl.id));
+			router.push(`/challenge/${newId}` as any);
+		}
 	};
 
 	useEffect(() => {
@@ -79,12 +95,6 @@ export default function Community() {
 					setSuggested(s);
 					setSuggestedUsers(u);
 					setLoading(false);
-
-					const partMap: Record<string, any[]> = {};
-					for (const c of s) {
-						partMap[c.id] = await fetchChallengeParticipants(c.id);
-					}
-					if (!cancelled) setParticipantsByChallenge(partMap);
 				}
 			})();
 			return () => {
@@ -157,41 +167,26 @@ export default function Community() {
 									{suggested.length === 0 ? (
 										<Text style={styles.muted}>No suggestions right now.</Text>
 									) : (
-										suggested.map((c) => {
-											const participants = participantsByChallenge[c.id] ?? [];
-											return (
-												<View key={c.id} style={styles.challengeCard}>
-													<View style={styles.challengeRow}>
-														<Globe size={18} color={Colors.ink} strokeWidth={2.2} />
-														<Text style={styles.challengeTitle}>{c.title}</Text>
-														<Text style={styles.challengeDeadline}>{daysLeft(c.deadline)}</Text>
-													</View>
-													{c.description && <Text style={styles.challengeDesc}>{c.description}</Text>}
-													<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-														{participants.length > 0 ? (
-															<>
-																<View style={styles.avatarsRow}>
-																	{participants.slice(0, 5).map((p, i) => (
-																		<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
-																			{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-																		</View>
-																	))}
-																</View>
-																<Text style={[styles.challengeMeta, { marginLeft: 8, marginBottom: 0 }]}>
-																	{participants.length} {participants.length === 1 ? "runner" : "runners"}
-																</Text>
-															</>
-														) : (
-															<Text style={styles.challengeMeta}>No runners yet</Text>
-														)}
-													</View>
-
-													<Pressable style={styles.joinBtn} onPress={() => handleJoin(c.id)}>
-														<Text style={styles.joinBtnText}>Join Challenge →</Text>
-													</Pressable>
+										suggested.map((c) => (
+											<View key={c.id} style={styles.challengeCard}>
+												<View style={styles.challengeRow}>
+													<Globe size={18} color={Colors.ink} strokeWidth={2.2} />
+													<Text style={styles.challengeTitle}>{c.title}</Text>
+													<Text style={styles.challengeDeadline}>{daysLeft(c.deadline)}</Text>
 												</View>
-											);
-										})
+												{c.description && <Text style={styles.challengeDesc}>{c.description}</Text>}
+
+												<View style={{ flexDirection: "row", marginBottom: 10 }}>
+													<View style={[styles.difficultyBadge, c.difficulty === "easy" ? styles.diffEasy : c.difficulty === "medium" ? styles.diffMedium : styles.diffHard]}>
+														<Text style={styles.difficultyText}>{c.difficulty.toUpperCase()}</Text>
+													</View>
+												</View>
+
+												<Pressable style={styles.joinBtn} onPress={() => handleJoin(c)} disabled={joiningId === c.id}>
+													<Text style={styles.joinBtnText}>{joiningId === c.id ? "Joining..." : "Join Challenge →"}</Text>
+												</Pressable>
+											</View>
+										))
 									)}
 								</View>
 							)}
@@ -370,13 +365,15 @@ const styles = StyleSheet.create({
 	challengeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
 	challengeTitle: { flex: 1, fontFamily: Fonts.bodyBold, fontSize: 15, fontWeight: "800", color: Colors.ink },
 	challengeDeadline: { fontFamily: Fonts.body, fontSize: 11, color: Colors.ink70 },
-	challengeDesc: { fontFamily: Fonts.body, fontSize: 13, color: Colors.ink70, marginBottom: 4 },
-	challengeMeta: { fontFamily: Fonts.body, fontSize: 12, color: Colors.ink70, marginBottom: 10 },
-	avatarsRow: { flexDirection: "row", marginBottom: 10 },
-	participantAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: Colors.white, overflow: "hidden" },
-	participantAvatarImg: { width: "100%", height: "100%" },
+	challengeDesc: { fontFamily: Fonts.body, fontSize: 13, color: Colors.ink70, marginBottom: 8 },
 	joinBtn: { backgroundColor: Colors.secundaire, paddingVertical: 10, borderRadius: Radius.pill, alignItems: "center" },
 	joinBtnText: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "800", color: Colors.white },
+
+	difficultyBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill, alignSelf: "flex-start" },
+	diffEasy: { backgroundColor: "rgba(91,200,120,0.2)" },
+	diffMedium: { backgroundColor: "rgba(255,209,92,0.2)" },
+	diffHard: { backgroundColor: "rgba(255,87,87,0.2)" },
+	difficultyText: { fontFamily: Fonts.bodyBold, fontSize: 10, fontWeight: "800", color: Colors.ink, letterSpacing: 0.5 },
 
 	usersRow: { paddingHorizontal: Spacing.lg, gap: 10 },
 	userCard: { width: 120, alignItems: "center", backgroundColor: Colors.white08, borderRadius: Radius.lg, padding: 12 },
