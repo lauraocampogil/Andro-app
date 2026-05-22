@@ -18,7 +18,6 @@ export async function fetchCommunityFeed(currentUserId: string): Promise<Activit
 	const followingIds = (followingData ?? []).map((f) => f.following_id);
 	if (followingIds.length === 0) return [];
 
-	// Fetch activities
 	const { data: activities, error } = await supabase
 		.from("activities")
 		.select(
@@ -38,7 +37,6 @@ export async function fetchCommunityFeed(currentUserId: string): Promise<Activit
 		return [];
 	}
 
-	// Collect all user IDs we need profiles for (authors + targets)
 	const userIds = new Set<string>();
 	activities.forEach((a: any) => {
 		userIds.add(a.user_id);
@@ -74,7 +72,6 @@ export function timeAgo(iso: string): string {
 	return "now";
 }
 
-// Suggested users — keep as is
 export type SuggestedUser = {
 	id: string;
 	display_name: string;
@@ -93,12 +90,18 @@ export async function fetchSuggestedUsers(currentUserId: string): Promise<Sugges
 	const { data, error } = await query;
 	if (error || !data) return [];
 
-	return data.map((p: any) => ({
-		id: p.id,
-		display_name: p.display_name ?? "Anonymous",
-		avatar_url: p.avatar_url,
-		is_following: false,
-	}));
+	// Check pending follow requests so the button can show "Requested"
+	const { data: pendingReqs } = await supabase.from("follow_requests").select("target_id").eq("requester_id", currentUserId).eq("status", "pending");
+	const pendingSet = new Set((pendingReqs ?? []).map((r) => r.target_id));
+
+	return data.map(
+		(p: any): SuggestedUser => ({
+			id: p.id,
+			display_name: p.display_name ?? "Anonymous",
+			avatar_url: p.avatar_url,
+			follow_status: pendingSet.has(p.id) ? "pending" : "none",
+		}),
+	);
 }
 
 export async function searchUsers(query: string, currentUserId: string): Promise<SuggestedUser[]> {
@@ -109,14 +112,18 @@ export async function searchUsers(query: string, currentUserId: string): Promise
 
 	if (error || !data) return [];
 
-	// Check which ones we already follow
 	const { data: follows } = await supabase.from("follows").select("following_id").eq("follower_id", currentUserId);
 	const followingSet = new Set((follows ?? []).map((f) => f.following_id));
 
-	return data.map((p: any) => ({
-		id: p.id,
-		display_name: p.display_name ?? "Anonymous",
-		avatar_url: p.avatar_url,
-		is_following: followingSet.has(p.id),
-	}));
+	const { data: pendingReqs } = await supabase.from("follow_requests").select("target_id").eq("requester_id", currentUserId).eq("status", "pending");
+	const pendingSet = new Set((pendingReqs ?? []).map((r) => r.target_id));
+
+	return data.map(
+		(p: any): SuggestedUser => ({
+			id: p.id,
+			display_name: p.display_name ?? "Anonymous",
+			avatar_url: p.avatar_url,
+			follow_status: followingSet.has(p.id) ? "following" : pendingSet.has(p.id) ? "pending" : "none",
+		}),
+	);
 }

@@ -1,7 +1,7 @@
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { HeaderButton } from "@/components/HeaderButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { daysLeft, fetchChallengeParticipants, fetchSuggestedChallenges, joinChallenge, SuggestedChallenge } from "@/lib/challenges";
 import { ActivityItem, fetchCommunityFeed, fetchSuggestedUsers, searchUsers, SuggestedUser, timeAgo } from "@/lib/community";
@@ -42,6 +42,13 @@ export default function Community() {
 		if (!userId) return;
 		const status = await requestOrFollow(userId, targetId);
 		setSuggestedUsers((prev) => prev.map((u) => (u.id === targetId ? { ...u, follow_status: status } : u)));
+		setSearchResults((prev) => prev.map((u) => (u.id === targetId ? { ...u, follow_status: status } : u)));
+	};
+
+	const handleJoin = async (challengeId: string) => {
+		if (!userId) return;
+		const ok = await joinChallenge(userId, challengeId);
+		if (ok) setSuggested((prev) => prev.filter((c) => c.id !== challengeId));
 	};
 
 	useEffect(() => {
@@ -56,7 +63,7 @@ export default function Community() {
 			const results = await searchUsers(q, userId);
 			setSearchResults(results);
 			setSearching(false);
-		}, 300); // debounce
+		}, 300);
 		return () => clearTimeout(timer);
 	}, [search, userId]);
 
@@ -73,7 +80,6 @@ export default function Community() {
 					setSuggestedUsers(u);
 					setLoading(false);
 
-					// Fetch participants for each challenge
 					const partMap: Record<string, any[]> = {};
 					for (const c of s) {
 						partMap[c.id] = await fetchChallengeParticipants(c.id);
@@ -86,18 +92,6 @@ export default function Community() {
 			};
 		}, [userId]),
 	);
-
-	const handleJoin = async (challengeId: string) => {
-		if (!userId) return;
-		const ok = await joinChallenge(userId, challengeId);
-		if (ok) setSuggested((prev) => prev.filter((c) => c.id !== challengeId));
-	};
-
-	const handleFollow = async (targetId: string) => {
-		if (!userId) return;
-		const ok = await followUser(userId, targetId);
-		if (ok) setSuggestedUsers((prev) => prev.map((u) => (u.id === targetId ? { ...u, is_following: true } : u)));
-	};
 
 	const filteredFeed = useMemo(() => {
 		if (timeFilter === "all") return feed;
@@ -142,18 +136,18 @@ export default function Community() {
 											{u.avatar_url ? <Image source={{ uri: u.avatar_url }} style={styles.searchAvatarImg} contentFit="cover" /> : <View style={[styles.searchAvatarImg, { backgroundColor: Colors.secundaire }]} />}
 										</View>
 										<Text style={styles.searchName}>{u.display_name}</Text>
-										{u.is_following && <Text style={styles.followingTag}>Following</Text>}
+										{u.follow_status === "following" && <Text style={styles.followingTag}>Following</Text>}
+										{u.follow_status === "pending" && <Text style={styles.followingTag}>Requested</Text>}
 									</Pressable>
 								))
 							)}
 						</View>
 					) : (
 						<>
-							{/* Suggested Challenges */}
 							{visibleSections.challenges && (
 								<View style={styles.section}>
 									<View style={styles.sectionHeader}>
-										<Text style={styles.sectionHeaderTitle}>SUGGESTED CHALLENGES</Text>
+										<Text style={styles.sectionHeaderTitle}>Suggested challenges</Text>
 										<Pressable style={styles.createBtn} onPress={() => router.push("/create-challenge" as any)}>
 											<Plus size={14} color={Colors.white} strokeWidth={2.6} />
 											<Text style={styles.createBtnText}>Create</Text>
@@ -184,24 +178,13 @@ export default function Community() {
 																	))}
 																</View>
 																<Text style={[styles.challengeMeta, { marginLeft: 8, marginBottom: 0 }]}>
-																	{c.participants_count} {c.participants_count === 1 ? "runner" : "runners"}
+																	{participants.length} {participants.length === 1 ? "runner" : "runners"}
 																</Text>
 															</>
 														) : (
 															<Text style={styles.challengeMeta}>No runners yet</Text>
 														)}
 													</View>
-
-													{/* Friend avatars */}
-													{participants.length > 0 && (
-														<View style={styles.avatarsRow}>
-															{participants.slice(0, 5).map((p, i) => (
-																<View key={i} style={[styles.participantAvatar, { marginLeft: i === 0 ? 0 : -8 }]}>
-																	{p?.avatar_url ? <Image source={{ uri: p.avatar_url }} style={styles.participantAvatarImg} contentFit="cover" /> : <View style={[styles.participantAvatarImg, { backgroundColor: Colors.secundaire }]} />}
-																</View>
-															))}
-														</View>
-													)}
 
 													<Pressable style={styles.joinBtn} onPress={() => handleJoin(c.id)}>
 														<Text style={styles.joinBtnText}>Join Challenge →</Text>
@@ -213,10 +196,9 @@ export default function Community() {
 								</View>
 							)}
 
-							{/* Suggested users */}
 							{visibleSections.people && suggestedUsers.length > 0 && (
 								<View style={styles.section}>
-									<Text style={styles.sectionTitle}>PEOPLE TO FOLLOW</Text>
+									<Text style={styles.sectionTitle}>People to follow</Text>
 									<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.usersRow}>
 										{suggestedUsers.map((u) => (
 											<Pressable key={u.id} style={styles.userCard} onPress={() => router.push(`/user/${u.id}` as any)}>
@@ -233,11 +215,10 @@ export default function Community() {
 								</View>
 							)}
 
-							{/* Following activity */}
 							{visibleSections.activity && (
 								<View style={styles.section}>
 									<View style={styles.feedHeaderRow}>
-										<Text style={styles.feedSectionTitle}>FOLLOWING ACTIVITY</Text>
+										<Text style={styles.feedSectionTitle}>Following activity</Text>
 										<Pressable style={styles.timeFilterBtn} onPress={() => setFilterMenuOpen((v) => !v)}>
 											<Text style={styles.timeFilterText}>{timeFilterLabels[timeFilter]}</Text>
 											<ChevronDown size={14} color={Colors.white70} strokeWidth={2.2} />
@@ -380,13 +361,8 @@ const styles = StyleSheet.create({
 
 	section: { marginTop: Spacing.lg, marginBottom: Spacing.lg },
 	sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
-	sectionHeaderTitle: {
-		fontFamily: Fonts.display,
-		fontStyle: "italic",
-		fontSize: 20,
-		color: Colors.white,
-	},
-	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 20, color: Colors.white, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+	sectionHeaderTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0 },
+	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
 	createBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: Colors.secundaire, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
 	createBtnText: { fontFamily: Fonts.bodyBold, fontSize: 12, fontWeight: "800", color: Colors.white },
 
@@ -420,76 +396,22 @@ const styles = StyleSheet.create({
 	feedAction: { fontFamily: Fonts.body, fontSize: 13, color: Colors.ink70 },
 	feedHighlight: { fontFamily: Fonts.bodyBold, fontWeight: "800", color: Colors.ink },
 
-	feedHeaderRow: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		paddingHorizontal: Spacing.lg,
-		marginBottom: Spacing.md,
-	},
-	feedSectionTitle: {
-		fontFamily: Fonts.display,
-		fontStyle: "italic",
-		fontSize: 20,
-		color: Colors.white,
-	},
-	timeFilterBtn: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 4,
-		paddingHorizontal: 12,
-		paddingVertical: 6,
-		borderRadius: Radius.pill,
-		backgroundColor: Colors.white08,
-		borderWidth: 1,
-		borderColor: Colors.white15,
-	},
-	timeFilterText: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: 12,
-		color: Colors.white70,
-	},
-	timeFilterMenu: {
-		marginHorizontal: Spacing.lg,
-		marginBottom: Spacing.md,
-		backgroundColor: Colors.hoofdkleur,
-		borderRadius: Radius.lg,
-		borderWidth: 1,
-		borderColor: Colors.white15,
-		overflow: "hidden",
-	},
-	timeFilterOption: {
-		paddingVertical: 12,
-		paddingHorizontal: 16,
-		borderBottomWidth: 1,
-		borderBottomColor: Colors.white15,
-	},
-	timeFilterOptionActive: {
-		backgroundColor: "rgba(91, 88, 235, 0.18)",
-	},
-	timeFilterOptionText: {
-		fontFamily: Fonts.body,
-		fontSize: 14,
-		color: Colors.white70,
-	},
-	timeFilterOptionTextActive: {
-		color: Colors.white,
-		fontFamily: Fonts.bodyBold,
-		fontWeight: "700",
-	},
+	feedHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+	feedSectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0 },
+	timeFilterBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, backgroundColor: Colors.white08, borderWidth: 1, borderColor: Colors.white15 },
+	timeFilterText: { fontFamily: Fonts.bodyBold, fontSize: 12, color: Colors.white70 },
+	timeFilterMenu: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.white15, overflow: "hidden" },
+	timeFilterOption: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
+	timeFilterOptionActive: { backgroundColor: "rgba(91, 88, 235, 0.18)" },
+	timeFilterOptionText: { fontFamily: Fonts.body, fontSize: 14, color: Colors.white70 },
+	timeFilterOptionTextActive: { color: Colors.white, fontFamily: Fonts.bodyBold, fontWeight: "700" },
 
 	muted: { color: Colors.white70, fontFamily: Fonts.body, fontSize: 14, textAlign: "center", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.base },
 
 	modalBackdrop: { flex: 1, backgroundColor: "rgba(4,8,26,0.82)", alignItems: "center", justifyContent: "center" },
 	filterCard: { width: 320, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.white15, padding: Spacing.lg },
 	filterHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.base },
-	filterTitle: {
-		fontFamily: Fonts.display,
-		fontStyle: "italic",
-		fontSize: 22, // 22
-		color: Colors.white,
-		letterSpacing: 0,
-	},
+	filterTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0 },
 	filterRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.white15 },
 	filterRowText: { fontFamily: Fonts.body, fontSize: 15, color: Colors.white },
 	filterCheckbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: Colors.white30, alignItems: "center", justifyContent: "center" },
@@ -502,10 +424,4 @@ const styles = StyleSheet.create({
 	searchAvatarImg: { width: "100%", height: "100%" },
 	searchName: { flex: 1, fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
 	followingTag: { fontFamily: Fonts.body, fontSize: 11, color: Colors.white50 },
-
-	difficultyBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
-	diffEasy: { backgroundColor: "rgba(91,200,120,0.2)" },
-	diffMedium: { backgroundColor: "rgba(255,209,92,0.2)" },
-	diffHard: { backgroundColor: "rgba(255,87,87,0.2)" },
-	difficultyText: { fontFamily: Fonts.bodyBold, fontSize: 10, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },
 });
