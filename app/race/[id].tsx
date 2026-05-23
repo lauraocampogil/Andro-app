@@ -1,18 +1,26 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
-import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { useFavoritesStore } from "@/lib/favoritesStore";
+import { fetchVisibleRegistrants, getRegistrationCount, RegisteredUser, registerForRace } from "@/lib/raceRegistrations";
 import { fetchRaceById, Race } from "@/lib/races";
 import { createReview, fetchFriendsThatGo, fetchReviewsForRace, Review } from "@/lib/reviews";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Calendar, Crown, Footprints, Globe, Heart, Maximize2, Minimize2, Minus, Plus, Star, X } from "lucide-react-native";
+import { Calendar, Crown, Footprints, Globe, Heart, HeartHandshake, Map, Maximize2, Minimize2, Minus, Plus, Star, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Tab = "info" | "reviews";
+
+const ASSOCIATIONS = [
+	{ id: "none", name: "Run for myself", description: "No association" },
+	{ id: "unicef", name: "UNICEF", description: "Run to support children worldwide" },
+	{ id: "cancer", name: "Cancer Research", description: "Raise funds for cancer research" },
+	{ id: "climate", name: "Climate Action", description: "Run for the planet" },
+];
 
 export default function RaceDetail() {
 	const router = useRouter();
@@ -26,7 +34,10 @@ export default function RaceDetail() {
 	const [tab, setTab] = useState<Tab>("info");
 	const [reviews, setReviews] = useState<Review[]>([]);
 	const [friends, setFriends] = useState<{ avatar_url: string | null; display_name: string | null }[]>([]);
+	const [registrants, setRegistrants] = useState<RegisteredUser[]>([]);
+	const [registeredCount, setRegisteredCount] = useState(0);
 	const [tickets, setTickets] = useState(0);
+	const [association, setAssociation] = useState("none");
 	const [reviewText, setReviewText] = useState("");
 	const [reviewRating, setReviewRating] = useState(0);
 	const [favLocal, setFavLocal] = useState(false);
@@ -54,6 +65,11 @@ export default function RaceDetail() {
 			const [rev, fr] = await Promise.all([fetchReviewsForRace(id), fetchFriendsThatGo(id)]);
 			setReviews(rev);
 			setFriends(fr);
+			if (userId) {
+				const [regs, count] = await Promise.all([fetchVisibleRegistrants(id, userId), getRegistrationCount(id)]);
+				setRegistrants(regs);
+				setRegisteredCount(count);
+			}
 		})();
 		if (userId) loadFavorites(userId);
 	}, [id, userId]);
@@ -80,9 +96,18 @@ export default function RaceDetail() {
 		toggleFavorite(userId, race.id);
 	};
 
+	const handleRegister = async () => {
+		if (!userId || tickets === 0) return;
+		const ok = await registerForRace(race.id, userId, tickets);
+		if (ok) {
+			const [regs, count] = await Promise.all([fetchVisibleRegistrants(race.id, userId), getRegistrationCount(race.id)]);
+			setRegistrants(regs);
+			setRegisteredCount(count);
+		}
+	};
+
 	return (
 		<View style={styles.container}>
-			{/* Hero with real image */}
 			<Animated.View style={[styles.hero, { height: heroHeight }]}>
 				{race.course_image_url ? <Image source={{ uri: race.course_image_url }} style={styles.heroImage} contentFit="cover" /> : <View style={[styles.heroImage, { backgroundColor: Colors.hoofdkleur }]} />}
 
@@ -99,13 +124,11 @@ export default function RaceDetail() {
 					</View>
 				</SafeAreaView>
 
-				{/* Zoom toggle — higher up to leave breathing room above the sheet */}
 				<Pressable style={styles.zoomBtn} onPress={() => setExpanded((v) => !v)}>
 					{expanded ? <Minimize2 size={18} color={Colors.white} strokeWidth={2.4} /> : <Maximize2 size={18} color={Colors.white} strokeWidth={2.4} />}
 				</Pressable>
 			</Animated.View>
 
-			{/* Sheet with cosmic background */}
 			<View style={styles.sheet}>
 				<CosmicBackground>
 					<View style={{ flex: 1, paddingTop: Spacing.lg }}>
@@ -146,7 +169,18 @@ export default function RaceDetail() {
 
 						<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 							{tab === "info" ? (
-								<InfoTab race={race} tickets={tickets} setTickets={setTickets} pricePerTicket={pricePerTicket} total={total} />
+								<InfoTab
+									race={race}
+									tickets={tickets}
+									setTickets={setTickets}
+									pricePerTicket={pricePerTicket}
+									total={total}
+									association={association}
+									setAssociation={setAssociation}
+									registrants={registrants}
+									registeredCount={registeredCount}
+									onRegister={handleRegister}
+								/>
 							) : (
 								<ReviewsTab
 									reviews={reviews}
@@ -173,7 +207,29 @@ export default function RaceDetail() {
 	);
 }
 
-function InfoTab({ race, tickets, setTickets, pricePerTicket, total }: { race: Race; tickets: number; setTickets: (n: number) => void; pricePerTicket: number; total: number }) {
+function InfoTab({
+	race,
+	tickets,
+	setTickets,
+	pricePerTicket,
+	total,
+	association,
+	setAssociation,
+	registrants,
+	registeredCount,
+	onRegister,
+}: {
+	race: Race;
+	tickets: number;
+	setTickets: (n: number) => void;
+	pricePerTicket: number;
+	total: number;
+	association: string;
+	setAssociation: (s: string) => void;
+	registrants: RegisteredUser[];
+	registeredCount: number;
+	onRegister: () => void;
+}) {
 	return (
 		<View style={{ paddingHorizontal: Spacing.lg }}>
 			<Text style={styles.sectionTitle}>Race details</Text>
@@ -187,6 +243,38 @@ function InfoTab({ race, tickets, setTickets, pricePerTicket, total }: { race: R
 				<Text style={[styles.addressLabel, { marginTop: 8 }]}>Finish address:</Text>
 				<Text style={styles.addressText}>{race.finish_address ?? `${race.city}, ${race.country}`}</Text>
 			</View>
+
+			{/* Parcours / route */}
+			<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>The route</Text>
+			<View style={styles.routeCard}>
+				{(race as any).route_image_url ? (
+					<Image source={{ uri: (race as any).route_image_url }} style={styles.routeImage} contentFit="cover" />
+				) : (
+					<View style={styles.routePlaceholder}>
+						<Map size={32} color={Colors.white50} strokeWidth={2} />
+						<Text style={styles.routePlaceholderText}>Route map coming soon</Text>
+					</View>
+				)}
+			</View>
+
+			{/* Association */}
+			<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>Run with an association</Text>
+			<Text style={styles.associationIntro}>Dedicate your race to a cause. A part of your ticket goes to the association.</Text>
+			{ASSOCIATIONS.map((a) => {
+				const selected = association === a.id;
+				return (
+					<Pressable key={a.id} style={[styles.associationItem, selected && styles.associationItemActive]} onPress={() => setAssociation(a.id)}>
+						<View style={[styles.associationIcon, selected && { backgroundColor: Colors.secundaire }]}>
+							<HeartHandshake size={18} color={Colors.white} strokeWidth={2.2} />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text style={styles.associationName}>{a.name}</Text>
+							<Text style={styles.associationDesc}>{a.description}</Text>
+						</View>
+						{selected && <Text style={styles.associationCheck}>✓</Text>}
+					</Pressable>
+				);
+			})}
 
 			<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>Register</Text>
 			<View style={styles.registerCard}>
@@ -209,11 +297,25 @@ function InfoTab({ race, tickets, setTickets, pricePerTicket, total }: { race: R
 				<View style={styles.registerBottom}>
 					<Text style={styles.registerTickets}>{tickets} tickets selected</Text>
 					<Text style={styles.registerTotal}>Total {total} EUR</Text>
-					<Pressable style={[styles.registerBtn, tickets === 0 && { opacity: 0.5 }]} disabled={tickets === 0}>
+					<Pressable style={[styles.registerBtn, tickets === 0 && { opacity: 0.5 }]} disabled={tickets === 0} onPress={onRegister}>
 						<Text style={styles.registerBtnText}>Register</Text>
 					</Pressable>
 				</View>
 			</View>
+
+			{/* Registered runners (privacy-aware) */}
+			{registrants.length > 0 && (
+				<View style={{ marginTop: Spacing.lg }}>
+					<Text style={styles.addressLabel}>{registeredCount} runners registered</Text>
+					<View style={[styles.friendsRow, { marginTop: 8 }]}>
+						{registrants.slice(0, 10).map((r, i) => (
+							<View key={r.id} style={[styles.friendAvatar, { marginLeft: i === 0 ? 0 : -10 }]}>
+								{r.avatar_url ? <Image source={{ uri: r.avatar_url }} style={styles.friendAvatarImg} contentFit="cover" /> : <View style={[styles.friendAvatarImg, { backgroundColor: Colors.secundaire }]} />}
+							</View>
+						))}
+					</View>
+				</View>
+			)}
 
 			<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>What's included</Text>
 			<View style={styles.includedGrid}>
@@ -283,7 +385,15 @@ function ReviewsTab({
 						<View style={styles.reviewAvatar}>
 							{r.user?.avatar_url ? <Image source={{ uri: r.user.avatar_url }} style={styles.reviewAvatarImg} contentFit="cover" /> : <View style={[styles.reviewAvatarImg, { backgroundColor: Colors.secundaire }]} />}
 						</View>
-						<Text style={styles.reviewComment}>{r.comment ?? `Rated ${r.rating}/5`}</Text>
+						<View style={{ flex: 1 }}>
+							<Text style={styles.reviewUserName}>{r.user?.display_name ?? "Anonymous"}</Text>
+							<View style={{ flexDirection: "row", gap: 2, marginVertical: 3 }}>
+								{[1, 2, 3, 4, 5].map((n) => (
+									<Star key={n} size={12} color="#FFD15C" fill={n <= r.rating ? "#FFD15C" : "transparent"} strokeWidth={1.5} />
+								))}
+							</View>
+							{r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+						</View>
 					</View>
 				))
 			)}
@@ -302,7 +412,7 @@ function ReviewsTab({
 
 			{friends.length > 0 && (
 				<View style={{ marginTop: Spacing.xl }}>
-					<Text style={styles.friendsTitle}>FRIENDS THAT GO</Text>
+					<Text style={styles.friendsTitle}>Friends that go</Text>
 					<View style={styles.friendsRow}>
 						{friends.map((f, i) => (
 							<View key={i} style={[styles.friendAvatar, { marginLeft: i === 0 ? 0 : -10 }]}>
@@ -327,34 +437,11 @@ const styles = StyleSheet.create({
 	cityPill: { backgroundColor: Colors.white, paddingHorizontal: 18, paddingVertical: 12, borderRadius: Radius.pill },
 	cityText: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 15, color: Colors.ink, letterSpacing: 0 },
 	closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
-	zoomBtn: {
-		position: "absolute",
-		right: Spacing.lg,
-		bottom: 30,
-		width: 44,
-		height: 44,
-		borderRadius: 22,
-		backgroundColor: Colors.white15,
-		alignItems: "center",
-		justifyContent: "center",
-	},
+	zoomBtn: { position: "absolute", right: Spacing.lg, bottom: 30, width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 
-	sheet: {
-		flex: 1,
-		borderTopLeftRadius: 40,
-		borderTopRightRadius: 40,
-		overflow: "hidden",
-		marginTop: 0,
-	},
+	sheet: { flex: 1, borderTopLeftRadius: 40, borderTopRightRadius: 40, overflow: "hidden", marginTop: 0 },
 
-	tabs: {
-		flexDirection: "row",
-		alignSelf: "center",
-		backgroundColor: Colors.white15,
-		borderRadius: Radius.pill,
-		padding: 4,
-		marginBottom: Spacing.base,
-	},
+	tabs: { flexDirection: "row", alignSelf: "center", backgroundColor: Colors.white15, borderRadius: Radius.pill, padding: 4, marginBottom: Spacing.base },
 	tab: { paddingHorizontal: 28, paddingVertical: 9, borderRadius: Radius.pill },
 	tabActive: { backgroundColor: Colors.white },
 	tabText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white },
@@ -363,26 +450,10 @@ const styles = StyleSheet.create({
 	metaRow: { flexDirection: "row", alignItems: "center", gap: Spacing.base, paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
 	metaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
 	metaText: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white },
-	heartBtn: {
-		marginLeft: "auto",
-		width: 38,
-		height: 38,
-		borderRadius: 19,
-		backgroundColor: Colors.secundaire,
-		alignItems: "center",
-		justifyContent: "center",
-	},
+	heartBtn: { marginLeft: "auto", width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.secundaire, alignItems: "center", justifyContent: "center" },
 	heartBtnActive: { backgroundColor: "#FF5757" },
 
-	sectionTitle: {
-		fontFamily: Fonts.display,
-		fontStyle: "italic",
-		fontSize: 18,
-		color: Colors.white,
-		letterSpacing: 0,
-		marginBottom: Spacing.md,
-		textTransform: "uppercase",
-	},
+	sectionTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, letterSpacing: 0, marginBottom: Spacing.md },
 
 	detailRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
 	detailLabel: { fontFamily: Fonts.body, fontSize: 14, color: Colors.white, minWidth: 110 },
@@ -392,6 +463,19 @@ const styles = StyleSheet.create({
 
 	addressLabel: { fontFamily: Fonts.bodyBold, fontSize: 13, color: Colors.white, fontWeight: "700" },
 	addressText: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70, marginTop: 2 },
+
+	routeCard: { width: "100%", height: 180, borderRadius: Radius.lg, overflow: "hidden", backgroundColor: Colors.white08 },
+	routeImage: { width: "100%", height: "100%" },
+	routePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
+	routePlaceholderText: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white50 },
+
+	associationIntro: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white70, marginBottom: Spacing.md },
+	associationItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: Colors.white08, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.white15, marginBottom: 8 },
+	associationItemActive: { borderColor: Colors.secundaire, backgroundColor: "rgba(91, 88, 235, 0.18)" },
+	associationIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
+	associationName: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
+	associationDesc: { fontFamily: Fonts.body, fontSize: 12, color: Colors.white70, marginTop: 2 },
+	associationCheck: { fontFamily: Fonts.bodyBold, fontSize: 18, color: Colors.secundaire },
 
 	registerCard: { backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.base },
 	registerTop: { flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.ink08 },
@@ -413,15 +497,16 @@ const styles = StyleSheet.create({
 	includedText: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white },
 
 	emptyReviews: { fontFamily: Fonts.body, fontSize: 14, color: Colors.white70, textAlign: "center", paddingVertical: Spacing.lg },
-	reviewCard: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.white, borderRadius: Radius.lg, padding: 12, marginBottom: 8, gap: 12 },
+	reviewCard: { flexDirection: "row", alignItems: "flex-start", backgroundColor: Colors.white, borderRadius: Radius.lg, padding: 12, marginBottom: 8, gap: 12 },
 	reviewAvatar: { width: 40, height: 40, borderRadius: 20, overflow: "hidden" },
 	reviewAvatarImg: { width: "100%", height: "100%" },
-	reviewComment: { flex: 1, fontFamily: Fonts.body, fontSize: 13, color: Colors.ink },
+	reviewUserName: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "800", color: Colors.ink },
+	reviewComment: { fontFamily: Fonts.body, fontSize: 13, color: Colors.ink },
 
 	starsRow: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: Spacing.lg, marginBottom: Spacing.md },
 	reviewInput: { minHeight: 80, backgroundColor: Colors.white08, borderRadius: Radius.md, padding: 12, color: Colors.white, fontFamily: Fonts.body, fontSize: 14, marginBottom: Spacing.md, textAlignVertical: "top" },
 
-	friendsTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 18, color: Colors.white, marginBottom: Spacing.md, textTransform: "uppercase" },
+	friendsTitle: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h3, color: Colors.white, marginBottom: Spacing.md },
 	friendsRow: { flexDirection: "row" },
 	friendAvatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: Colors.hoofdkleur, overflow: "hidden" },
 	friendAvatarImg: { width: "100%", height: "100%" },
