@@ -24,14 +24,18 @@ type CardLike = {
 	} | null;
 };
 
-export function resolveCardImage(card: CardLike): ImageSourcePropType | null {
+export function resolveCardImage(card: CardLike): ImageSourcePropType {
 	if (card.qr_code && CARDS_BY_QR[card.qr_code]) return CARDS_BY_QR[card.qr_code];
+
 	const code = card.race?.country_code;
 	if (code && CARDS_BY_COUNTRY[code]) return CARDS_BY_COUNTRY[code];
+
 	const name = card.race?.name;
 	if (name && CARDS_BY_RACE_NAME[name]) return CARDS_BY_RACE_NAME[name];
+
 	if (card.creature_image_url && card.creature_image_url.startsWith("http")) {
 		return { uri: card.creature_image_url };
 	}
-	return null;
+
+	return card_brussel;
 }

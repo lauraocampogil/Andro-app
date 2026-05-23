@@ -7,7 +7,6 @@ import { cancelFollowRequest, checkFollowStatus, FollowRequestStatus, requestOrF
 import { getFollowersCount, getFollowingCount, unfollowUser } from "@/lib/follows";
 import { MuseumCard } from "@/lib/museum";
 import { fetchPublicActiveChallenges, fetchPublicMuseumCards, fetchPublicProfile, PublicProfile } from "@/lib/userProfile";
-import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Clock, Lock, Star, UserPlus, X } from "lucide-react-native";
@@ -220,14 +219,11 @@ export default function UserProfile() {
 													<View style={[styles.cardImageWrap, { aspectRatio: 3 / 4 }, isFeatured && styles.cardImageFeatured]}>
 														{image ? (
 															<>
-																<Image source={image} style={styles.cardImage} contentFit="cover" />
+																<Image source={image} style={[styles.cardImage, !card.unlocked && { opacity: 0.4 }]} contentFit="cover" />
 																{!card.unlocked && (
-																	<>
-																		<BlurView intensity={38} tint="dark" style={StyleSheet.absoluteFill} />
-																		<View style={styles.lockedOverlay}>
-																			<Lock size={26} color={Colors.white} strokeWidth={2.2} />
-																		</View>
-																	</>
+																	<View style={styles.lockedOverlay}>
+																		<Lock size={26} color={Colors.white} strokeWidth={2.2} />
+																	</View>
 																)}
 															</>
 														) : (
@@ -374,7 +370,12 @@ const styles = StyleSheet.create({
 	cardImage: { width: "100%", height: "100%" },
 	cardLocked: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a1d3a", gap: 8 },
 	cardLockedQ: { fontFamily: Fonts.display, fontSize: 24, fontStyle: "italic", color: Colors.white50, letterSpacing: 2 },
-	lockedOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+	lockedOverlay: {
+		...StyleSheet.absoluteFillObject,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(10, 15, 44, 0.55)",
+	},
 	rarityBadge: { position: "absolute", top: 8, right: 8, backgroundColor: Colors.secundaire, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
 	rarityLegendary: { backgroundColor: "#FFD15C" },
 	rarityText: { fontFamily: Fonts.bodyBold, fontSize: 9, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },

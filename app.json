@@ -13,21 +13,23 @@
 				"NSLocationWhenInUseUsageDescription": "Andro uses your location to suggest nearby races and show your position on the globe.",
 				"NSPhotoLibraryUsageDescription": "Andro needs access to your photos to set your profile picture.",
 				"NSCameraUsageDescription": "Andro needs access to your camera to take a profile picture."
-			}
+			},
+			"bundleIdentifier": "com.anonymous.Androapp"
 		},
 		"android": {
-			"permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "READ_EXTERNAL_STORAGE", "CAMERA"]
+			"permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "READ_EXTERNAL_STORAGE", "CAMERA"],
+			"package": "com.anonymous.Androapp"
 		},
 		"web": {
 			"output": "static",
-			"favicon": "./assets/images/favicon.png"
+			"favicon": "./assets/images/icon.png"
 		},
 		"plugins": [
 			"expo-router",
 			[
 				"expo-splash-screen",
 				{
-					"image": "./assets/images/splash-icon.png",
+					"image": "./assets/images/icon.png",
 					"imageWidth": 200,
 					"resizeMode": "contain",
 					"backgroundColor": "#ffffff",
