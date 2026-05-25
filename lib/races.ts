@@ -18,6 +18,9 @@ export type Race = {
 	course_image_url?: string | null;
 	start_address?: string | null;
 	finish_address?: string | null;
+	price_eur?: number | null;
+	route_image_url?: string | null;
+	included_items?: string[] | null;
 };
 
 export type CompletedRace = {
