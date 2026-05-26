@@ -23,7 +23,7 @@ export type Challenge = {
 export async function fetchActiveChallenges(userId: string): Promise<Challenge[]> {
 	const { data } = await supabase.from("challenge_participants").select("progress, challenge:challenges(*)").eq("user_id", userId);
 	if (!data) return [];
-	return data.map((d: any) => ({ ...d.challenge, user_progress: d.progress }));
+	return data.map((d: any) => ({ ...d.challenge, user_progress: d.progress })).filter((c: any) => c.id);
 }
 
 export type SuggestedChallenge = {
@@ -97,19 +97,29 @@ export async function fetchSuggestedChallenges(currentUserId: string): Promise<S
 
 export async function fetchChallengeParticipants(challengeId: string) {
 	const { data: participants } = await supabase.from("challenge_participants").select("user_id").eq("challenge_id", challengeId);
-
 	if (!participants || participants.length === 0) return [];
-
 	const uniqueIds = Array.from(new Set(participants.map((p) => p.user_id)));
-
 	const { data: profiles } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", uniqueIds.slice(0, 5));
-
 	return profiles ?? [];
 }
 
 export async function joinChallenge(userId: string, challengeId: string): Promise<boolean> {
-	const { error } = await supabase.from("challenge_participants").insert({ user_id: userId, challenge_id: challengeId });
+	const { error } = await supabase.from("challenge_participants").upsert({ user_id: userId, challenge_id: challengeId }, { onConflict: "challenge_id,user_id" });
+	if (error) console.error("joinChallenge error:", error);
 	return !error;
+}
+
+export async function leaveChallenge(userId: string, challengeId: string): Promise<boolean> {
+	const { error } = await supabase.from("challenge_participants").delete().eq("user_id", userId).eq("challenge_id", challengeId);
+	if (error) {
+		console.error("leaveChallenge error:", error);
+		return false;
+	}
+	const { data: remaining } = await supabase.from("challenge_participants").select("user_id").eq("challenge_id", challengeId);
+	if (!remaining || remaining.length === 0) {
+		await supabase.from("challenges").delete().eq("id", challengeId);
+	}
+	return true;
 }
 
 export async function fetchPublicChallenges(currentUserId: string): Promise<Challenge[]> {
@@ -154,7 +164,7 @@ export async function createChallenge(params: {
 		return null;
 	}
 
-	await supabase.from("challenge_participants").insert({ challenge_id: data.id, user_id: params.created_by });
+	await supabase.from("challenge_participants").upsert({ challenge_id: data.id, user_id: params.created_by }, { onConflict: "challenge_id,user_id" });
 
 	if (params.invited_user_ids && params.invited_user_ids.length > 0) {
 		await supabase.from("challenge_invitations").insert(

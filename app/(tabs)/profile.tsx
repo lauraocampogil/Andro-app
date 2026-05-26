@@ -5,7 +5,7 @@ import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
 import { countUnreadMessages } from "@/lib/challengeMessages";
-import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants } from "@/lib/challenges";
+import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants, leaveChallenge } from "@/lib/challenges";
 import { getFollowersCount, getFollowingCount } from "@/lib/follows";
 import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unsetFeaturedCard } from "@/lib/museum";
 import { supabase } from "@/lib/supabase";
@@ -103,6 +103,12 @@ export default function Profile() {
 			const ok = await setFeaturedCard(userId, expandedCard.id);
 			if (ok) setFeaturedId(expandedCard.id);
 		}
+	};
+
+	const handleLeaveChallenge = async (challengeId: string) => {
+		if (!userId) return;
+		const ok = await leaveChallenge(userId, challengeId);
+		if (ok) setChallenges((prev) => prev.filter((x) => x.id !== challengeId));
 	};
 
 	const expandedImage = expandedCard ? resolveCardImage(expandedCard) : null;
@@ -325,6 +331,18 @@ export default function Profile() {
 											<Text style={styles.expandedRowValue}>{new Date(expandedCard.unlocked_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
 										</View>
 									)}
+									{expandedCard?.finish_time && (
+										<View style={styles.expandedRow}>
+											<Text style={styles.expandedRowLabel}>Finish time</Text>
+											<Text style={styles.expandedRowValue}>{expandedCard.finish_time}</Text>
+										</View>
+									)}
+									{expandedCard?.finish_pace && (
+										<View style={styles.expandedRow}>
+											<Text style={styles.expandedRowLabel}>Pace</Text>
+											<Text style={styles.expandedRowValue}>{expandedCard.finish_pace}</Text>
+										</View>
+									)}
 								</View>
 							</ScrollView>
 
@@ -473,12 +491,7 @@ const styles = StyleSheet.create({
 	cardImage: { width: "100%", height: "100%" },
 	cardLocked: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a1d3a", gap: 8 },
 	cardLockedQ: { fontFamily: Fonts.display, fontSize: 24, fontStyle: "italic", color: Colors.white50, letterSpacing: 2 },
-	lockedOverlay: {
-		...StyleSheet.absoluteFillObject,
-		alignItems: "center",
-		justifyContent: "center",
-		backgroundColor: "rgba(10, 15, 44, 0.55)",
-	},
+	lockedOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(10, 15, 44, 0.55)" },
 	rarityBadge: { position: "absolute", top: 8, right: 8, backgroundColor: Colors.secundaire, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
 	rarityLegendary: { backgroundColor: "#FFD15C" },
 	rarityText: { fontFamily: Fonts.bodyBold, fontSize: 9, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },

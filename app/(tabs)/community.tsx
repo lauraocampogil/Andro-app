@@ -62,6 +62,7 @@ export default function Community() {
 		setJoiningId(null);
 		if (newId) {
 			await joinChallenge(userId, newId);
+			setJoinedIds((prev) => [...prev, tmpl.id]);
 			setSuggested((prev) => prev.filter((c) => c.id !== tmpl.id));
 			router.push(`/challenge/${newId}` as any);
 		}
@@ -112,6 +113,8 @@ export default function Community() {
 	}, [feed, timeFilter]);
 
 	const timeFilterLabels = { all: "All time", "1h": "Last hour", "1d": "Last 24h", "7d": "Last 7 days" };
+
+	const [joinedIds, setJoinedIds] = useState<string[]>([]);
 
 	return (
 		<CosmicBackground>
@@ -182,8 +185,8 @@ export default function Community() {
 													</View>
 												</View>
 
-												<Pressable style={styles.joinBtn} onPress={() => handleJoin(c)} disabled={joiningId === c.id}>
-													<Text style={styles.joinBtnText}>{joiningId === c.id ? "Joining..." : "Join Challenge →"}</Text>
+												<Pressable style={styles.joinBtn} onPress={() => handleJoin(c)} disabled={joiningId === c.id || joinedIds.includes(c.id)}>
+													<Text style={styles.joinBtnText}>{joinedIds.includes(c.id) ? "Joined ✓" : joiningId === c.id ? "Joining..." : "Join Challenge →"}</Text>
 												</Pressable>
 											</View>
 										))

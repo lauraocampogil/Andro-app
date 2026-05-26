@@ -3,13 +3,13 @@ import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { ChallengeDetail, fetchChallengeDetail } from "@/lib/challengeDetail";
 import { ChallengeMessage, fetchMessages, markChallengeMessagesAsRead, sendMessage, subscribeToMessages } from "@/lib/challengeMessages";
-import { daysLeft } from "@/lib/challenges";
+import { daysLeft, leaveChallenge } from "@/lib/challenges";
 import { respondToInvitation } from "@/lib/notifications";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Check, ChevronRight, Send, Trophy, X } from "lucide-react-native";
+import { Check, ChevronRight, LogOut, Send, Trophy, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChallengeDetailScreen() {
@@ -25,6 +25,19 @@ export default function ChallengeDetailScreen() {
 	const [responding, setResponding] = useState(false);
 	const listRef = useRef<FlatList<ChallengeMessage>>(null);
 
+	const handleLeave = async () => {
+		if (!userId || !id) return;
+		const ok = await leaveChallenge(userId, id);
+		if (ok) router.back();
+	};
+
+	const confirmLeave = () => {
+		Alert.alert("Leave challenge?", "You'll be removed from this challenge.", [
+			{ text: "Cancel", style: "cancel" },
+			{ text: "Leave", style: "destructive", onPress: handleLeave },
+		]);
+	};
+
 	useFocusEffect(
 		useCallback(() => {
 			if (!id || !userId) return;
@@ -35,7 +48,6 @@ export default function ChallengeDetailScreen() {
 					setDetail(d);
 					setMessages(m);
 				}
-				// Mark all message notifs for this challenge as read
 				await markChallengeMessagesAsRead(id, userId);
 			})();
 			return () => {
@@ -64,7 +76,6 @@ export default function ChallengeDetailScreen() {
 		if (!detail?.pendingInvitation || !id || !userId) return;
 		setResponding(true);
 		await respondToInvitation(detail.pendingInvitation.id, status);
-		// Re-fetch so the buttons disappear and the leaderboard updates
 		const fresh = await fetchChallengeDetail(id, userId);
 		setDetail(fresh);
 		setResponding(false);
@@ -95,7 +106,9 @@ export default function ChallengeDetailScreen() {
 					<Text style={styles.headerTitle} numberOfLines={1}>
 						{detail.title}
 					</Text>
-					<View style={{ width: 44 }} />
+					<Pressable style={styles.leaveBtn} onPress={confirmLeave} hitSlop={8}>
+						<LogOut size={18} color="#FF5757" strokeWidth={2.4} />
+					</Pressable>
 				</View>
 
 				{/* Tab switcher */}
@@ -110,7 +123,7 @@ export default function ChallengeDetailScreen() {
 
 				{tab === "info" ? (
 					<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-						{/* Pending invitation banner — only shows if YOU have a pending invite */}
+						{/* Pending invitation banner */}
 						{detail.pendingInvitation && (
 							<View style={styles.inviteBanner}>
 								<Text style={styles.inviteBannerText}>You've been invited to this challenge.</Text>
@@ -243,6 +256,7 @@ const styles = StyleSheet.create({
 	header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.base, gap: Spacing.base },
 	backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	headerTitle: { flex: 1, fontFamily: Fonts.display, fontStyle: "italic", fontSize: FontSizes.h2, color: Colors.white, textAlign: "center" },
+	leaveBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,87,87,0.18)", alignItems: "center", justifyContent: "center" },
 
 	tabs: { flexDirection: "row", alignSelf: "center", backgroundColor: Colors.white15, borderRadius: Radius.pill, padding: 4, marginBottom: Spacing.base },
 	tab: { paddingHorizontal: 24, paddingVertical: 8, borderRadius: Radius.pill },

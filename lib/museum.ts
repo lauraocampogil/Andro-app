@@ -16,6 +16,8 @@ export type MuseumCard = {
 	};
 	unlocked: boolean;
 	unlocked_at: string | null;
+	finish_time: string | null;
+	finish_pace: string | null;
 };
 
 export async function fetchMuseumCards(userId: string): Promise<MuseumCard[]> {
@@ -27,25 +29,30 @@ export async function fetchMuseumCards(userId: string): Promise<MuseumCard[]> {
 	}
 	if (!allCards) return [];
 
-	const { data: userCards, error: ucError } = await supabase.from("user_cards").select("card_id, scanned_at").eq("user_id", userId);
+	const { data: userCards, error: ucError } = await supabase.from("user_cards").select("card_id, scanned_at, finish_time, finish_pace").eq("user_id", userId);
 
 	if (ucError) console.error("Error fetching user_cards:", ucError);
 
-	const unlockedMap = new Map<string, string>();
+	const unlockedMap = new Map<string, any>();
 	(userCards ?? []).forEach((uc: any) => {
-		unlockedMap.set(uc.card_id, uc.scanned_at);
+		unlockedMap.set(uc.card_id, uc);
 	});
 
-	return (allCards as any[]).map((c) => ({
-		id: c.id,
-		qr_code: c.qr_code,
-		rarity: c.rarity,
-		creature_name: c.creature_name,
-		creature_image_url: c.creature_image_url,
-		race: c.race,
-		unlocked: unlockedMap.has(c.id),
-		unlocked_at: unlockedMap.get(c.id) ?? null,
-	}));
+	return (allCards as any[]).map((c) => {
+		const uc = unlockedMap.get(c.id);
+		return {
+			id: c.id,
+			qr_code: c.qr_code,
+			rarity: c.rarity,
+			creature_name: c.creature_name,
+			creature_image_url: c.creature_image_url,
+			race: c.race,
+			unlocked: !!uc,
+			unlocked_at: uc?.scanned_at ?? null,
+			finish_time: uc?.finish_time ?? null,
+			finish_pace: uc?.finish_pace ?? null,
+		};
+	});
 }
 
 export async function setFeaturedCard(userId: string, cardId: string): Promise<boolean> {
