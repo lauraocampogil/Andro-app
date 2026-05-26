@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
 	cardImage: { width: "100%", height: "100%" },
 	cardLocked: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a1d3a", gap: 8 },
 	cardLockedQ: { fontFamily: Fonts.display, fontSize: 24, fontStyle: "italic", color: Colors.white50, letterSpacing: 2 },
-	lockedOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(10, 15, 44, 0.55)" },
+	lockedOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5, 8, 25, 0.75)" },
 	rarityBadge: { position: "absolute", top: 8, right: 8, backgroundColor: Colors.secundaire, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
 	rarityLegendary: { backgroundColor: "#FFD15C" },
 	rarityText: { fontFamily: Fonts.bodyBold, fontSize: 9, fontWeight: "800", color: Colors.white, letterSpacing: 0.5 },

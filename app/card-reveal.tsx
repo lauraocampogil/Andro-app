@@ -1,7 +1,7 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
-import { resolveCardImage } from "@/lib/cardAssets";
+import { cardBack, resolveCardImage } from "@/lib/cardAssets";
 import { supabase } from "@/lib/supabase";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -9,7 +9,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TOTAL_CARDS = 10;
+const TOTAL_CARDS = 8;
 
 type CardData = {
 	id: string;
@@ -135,9 +135,7 @@ export default function CardReveal() {
 
 				<View style={styles.cardWrapper}>
 					<Animated.View style={[styles.card, styles.cardBack, backAnimatedStyle]}>
-						<View style={styles.cardBackContent}>
-							<Text style={styles.cardBackLogo}>ANDRO</Text>
-						</View>
+						<Image source={cardBack} style={styles.cardImage} resizeMode="cover" />
 					</Animated.View>
 
 					<Animated.View style={[styles.card, styles.cardFront, frontAnimatedStyle]}>
@@ -217,11 +215,8 @@ const styles = StyleSheet.create({
 		backfaceVisibility: "hidden",
 	},
 	cardBack: {
-		backgroundColor: Colors.primaireVive,
 		alignItems: "center",
 		justifyContent: "center",
-		borderWidth: 2,
-		borderColor: Colors.secundaire,
 	},
 	cardBackContent: { alignItems: "center" },
 	cardBackLogo: {
