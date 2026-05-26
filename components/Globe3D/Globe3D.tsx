@@ -5,9 +5,9 @@ import React, { Suspense, useRef } from "react";
 import { PanResponder, StyleSheet, View, ViewStyle } from "react-native";
 import * as THREE from "three";
 
-const COLOR_DEFAULT = "#474754";
+const COLOR_DEFAULT = "#38383f";
 const COLOR_COMPLETED = "#79a1ff";
-const COLOR_OCEAN = "#6a6c79";
+const COLOR_OCEAN = "#484a56";
 
 const MIN_ZOOM = 1.5;
 const MAX_ZOOM = 7;

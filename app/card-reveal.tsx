@@ -2,6 +2,7 @@ import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { cardBack, resolveCardImage } from "@/lib/cardAssets";
+import { getRevealStatus } from "@/lib/races";
 import { supabase } from "@/lib/supabase";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -26,6 +27,8 @@ type CardData = {
 	};
 };
 
+type RevealStatus = { isFirstOfContinent: boolean; allSixComplete: boolean };
+
 export default function CardReveal() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ qr: string; already?: string }>();
@@ -35,6 +38,7 @@ export default function CardReveal() {
 	const [card, setCard] = useState<CardData | null>(null);
 	const [unlockedCount, setUnlockedCount] = useState(0);
 	const [showContent, setShowContent] = useState(false);
+	const [revealStatus, setRevealStatus] = useState<RevealStatus | null>(null);
 
 	const flipValue = useSharedValue(0);
 	const scale = useSharedValue(0.5);
@@ -54,11 +58,17 @@ export default function CardReveal() {
 			if (user) {
 				const { count } = await supabase.from("user_cards").select("*", { count: "exact", head: true }).eq("user_id", user.id);
 				setUnlockedCount(count || 0);
+
+				// Decide which animation Continue should trigger
+				if (cardData && !alreadyCollected && (cardData as CardData).race?.continent) {
+					const status = await getRevealStatus(user.id, (cardData as CardData).race.continent!, (cardData as CardData).id);
+					setRevealStatus(status);
+				}
 			}
 		};
 
 		loadCard();
-	}, [qrCode]);
+	}, [qrCode, alreadyCollected]);
 
 	useEffect(() => {
 		if (!card) return;
@@ -94,21 +104,15 @@ export default function CardReveal() {
 
 	const cardImage = useMemo(() => (card ? resolveCardImage(card) : null), [card]);
 
-	useEffect(() => {
-		if (card) {
-			console.log("🎴 CARD DATA:", JSON.stringify(card, null, 2));
-			console.log("🖼️ resolved cardImage:", cardImage);
-			console.log("🖼️ typeof cardImage:", typeof cardImage);
-			console.log("🖼️ cardImage === null:", cardImage === null);
-		}
-	}, [card, cardImage]);
-
 	const handleContinue = () => {
-		if (!alreadyCollected && card?.race?.continent) {
-			router.replace({
-				pathname: "/(tabs)/home",
-				params: { unlockedContinent: card.race.continent },
-			} as any);
+		if (alreadyCollected) {
+			router.replace("/(tabs)/home" as any);
+			return;
+		}
+		if (revealStatus?.allSixComplete) {
+			router.replace({ pathname: "/(tabs)/home", params: { allContinentsComplete: "true" } } as any);
+		} else if (revealStatus?.isFirstOfContinent && card?.race?.continent) {
+			router.replace({ pathname: "/(tabs)/home", params: { unlockedContinent: card.race.continent } } as any);
 		} else {
 			router.replace("/(tabs)/home" as any);
 		}
@@ -140,7 +144,7 @@ export default function CardReveal() {
 
 					<Animated.View style={[styles.card, styles.cardFront, frontAnimatedStyle]}>
 						{cardImage ? (
-							<Image source={cardImage} style={styles.cardImage} resizeMode="contain" />
+							<Image source={cardImage} style={styles.cardImage} resizeMode="cover" />
 						) : (
 							<View style={[styles.cardPlaceholder, { backgroundColor: glowColor + "30" }]}>
 								<Text style={styles.cardPlaceholderEmoji}>{card.rarity === "legendary" ? "👑" : "✨"}</Text>
@@ -179,27 +183,9 @@ const styles = StyleSheet.create({
 	container: { flex: 1, alignItems: "center", justifyContent: "space-between", paddingVertical: Spacing.xl },
 	loadingText: { color: Colors.white, fontFamily: Fonts.body },
 	header: { alignItems: "center", marginTop: Spacing.lg },
-	headerText: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h2,
-		fontStyle: "italic",
-		color: Colors.violetLight,
-		letterSpacing: 1,
-	},
-	cardWrapper: {
-		width: CARD_WIDTH,
-		height: CARD_HEIGHT,
-		alignItems: "center",
-		justifyContent: "center",
-		position: "relative",
-	},
-	glow: {
-		position: "absolute",
-		width: CARD_WIDTH + 60,
-		height: CARD_HEIGHT + 60,
-		borderRadius: CARD_WIDTH,
-		opacity: 0.3,
-	},
+	headerText: { fontFamily: Fonts.display, fontSize: FontSizes.h2, fontStyle: "italic", color: Colors.violetLight, letterSpacing: 1 },
+	cardWrapper: { width: CARD_WIDTH, height: CARD_HEIGHT, alignItems: "center", justifyContent: "center", position: "relative" },
+	glow: { position: "absolute", width: CARD_WIDTH + 60, height: CARD_HEIGHT + 60, borderRadius: CARD_WIDTH, opacity: 0.3 },
 	card: {
 		position: "absolute",
 		width: CARD_WIDTH,
@@ -214,87 +200,19 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 		backfaceVisibility: "hidden",
 	},
-	cardBack: {
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	cardBackContent: { alignItems: "center" },
-	cardBackLogo: {
-		fontFamily: Fonts.display,
-		fontSize: 42,
-		fontStyle: "italic",
-		color: Colors.white,
-		letterSpacing: 4,
-	},
-	cardFront: {
-		backgroundColor: "transparent",
-	},
-	cardImage: {
-		width: "100%",
-		height: "100%",
-		backgroundColor: "transparent",
-	},
-	cardPlaceholder: {
-		flex: 1,
-		alignItems: "center",
-		justifyContent: "center",
-		padding: Spacing.lg,
-	},
+	cardBack: { alignItems: "center", justifyContent: "center" },
+	cardFront: { backgroundColor: "transparent" },
+	cardImage: { width: "100%", height: "100%", backgroundColor: "transparent" },
+	cardPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.lg },
 	cardPlaceholderEmoji: { fontSize: 64, marginBottom: Spacing.base },
-	cardPlaceholderName: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h1,
-		fontStyle: "italic",
-		color: Colors.ink,
-		textAlign: "center",
-	},
+	cardPlaceholderName: { fontFamily: Fonts.display, fontSize: FontSizes.h1, fontStyle: "italic", color: Colors.ink, textAlign: "center" },
 	info: { alignItems: "center", paddingHorizontal: Spacing.xl },
-	creatureName: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h1,
-		fontStyle: "italic",
-		color: Colors.white,
-		marginBottom: 4,
-	},
-	raceName: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: FontSizes.body,
-		color: Colors.violetLight,
-		marginBottom: 2,
-	},
-	raceLocation: {
-		fontFamily: Fonts.body,
-		fontSize: FontSizes.small,
-		color: Colors.white50 ?? "#ffffff80",
-		marginBottom: Spacing.lg,
-	},
-	counter: {
-		flexDirection: "row",
-		alignItems: "baseline",
-		flexWrap: "wrap",
-		justifyContent: "center",
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
-		paddingHorizontal: Spacing.lg,
-		paddingVertical: Spacing.base,
-		borderRadius: Radius.lg,
-	},
-	counterNum: {
-		fontFamily: Fonts.display,
-		fontSize: 32,
-		fontStyle: "italic",
-		color: Colors.white,
-	},
-	counterTotal: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: FontSizes.body,
-		color: Colors.violetLight,
-	},
-	counterLabel: {
-		fontFamily: Fonts.body,
-		fontSize: FontSizes.small,
-		color: Colors.white,
-		marginLeft: Spacing.base,
-		opacity: 0.8,
-	},
+	creatureName: { fontFamily: Fonts.display, fontSize: FontSizes.h1, fontStyle: "italic", color: Colors.white, marginBottom: 4 },
+	raceName: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.body, color: Colors.violetLight, marginBottom: 2 },
+	raceLocation: { fontFamily: Fonts.body, fontSize: FontSizes.small, color: Colors.white50 ?? "#ffffff80", marginBottom: Spacing.lg },
+	counter: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", justifyContent: "center", backgroundColor: "rgba(255, 255, 255, 0.1)", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.base, borderRadius: Radius.lg },
+	counterNum: { fontFamily: Fonts.display, fontSize: 32, fontStyle: "italic", color: Colors.white },
+	counterTotal: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.body, color: Colors.violetLight },
+	counterLabel: { fontFamily: Fonts.body, fontSize: FontSizes.small, color: Colors.white, marginLeft: Spacing.base, opacity: 0.8 },
 	buttonWrapper: { width: "100%", paddingHorizontal: Spacing.xl },
 });
