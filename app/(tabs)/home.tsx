@@ -1,3 +1,4 @@
+import { AllContinentsPopup } from "@/components/AllContinentsPopup";
 import { ContinentUnlockedPopup } from "@/components/ContinentUnlockedPopup";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Globe3D } from "@/components/Globe3D/Globe3D";
@@ -19,9 +20,11 @@ export default function Home() {
 	const router = useRouter();
 	const { countryCodes, continents, stats, loadUserRaces } = useRacesStore();
 
-	const params = useLocalSearchParams<{ unlockedContinent?: string }>();
+	const params = useLocalSearchParams<{ unlockedContinent?: string; allContinentsComplete?: string }>();
 	const [popupContinent, setPopupContinent] = useState<string | null>(null);
+	const [showAllContinents, setShowAllContinents] = useState(false);
 	const handledRef = useRef<Set<string>>(new Set());
+	const allHandledRef = useRef(false);
 
 	useEffect(() => {
 		if (session?.user?.id) loadUserRaces(session.user.id);
@@ -37,6 +40,13 @@ export default function Home() {
 		handledRef.current.add(incoming);
 		setPopupContinent(incoming);
 	}, [params.unlockedContinent, continents]);
+
+	useEffect(() => {
+		if (params.allContinentsComplete !== "true") return;
+		if (allHandledRef.current) return;
+		allHandledRef.current = true;
+		setShowAllContinents(true);
+	}, [params.allContinentsComplete]);
 
 	const resetAll = async () => {
 		await AsyncStorage.removeItem("andro_onboarding_completed");
@@ -86,6 +96,8 @@ export default function Home() {
 			</SafeAreaView>
 
 			<ContinentUnlockedPopup visible={popupContinent !== null} continent={popupContinent ?? ""} onClose={() => setPopupContinent(null)} />
+
+			<AllContinentsPopup visible={showAllContinents} onClose={() => setShowAllContinents(false)} />
 		</CosmicBackground>
 	);
 }

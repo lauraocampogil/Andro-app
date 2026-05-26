@@ -158,7 +158,7 @@ export function computeProgressStats(completedRaces: CompletedRace[]): ProgressS
 	const countries = getCompletedCountryCodes(completedRaces);
 	const continents = getCompletedContinents(completedRaces);
 
-	const TOTAL_CONTINENTS = 7;
+	const TOTAL_CONTINENTS = 6;
 	const TOTAL_COUNTRIES = 195;
 
 	return {
@@ -223,5 +223,48 @@ export async function markCardScanned(
 		invalidCode: false,
 		card,
 		race: card.race as Race,
+	};
+}
+
+export async function saveRaceResult(userId: string, cardId: string, finishTime: string, finishPace: string): Promise<boolean> {
+	const { error } = await supabase
+		.from("user_cards")
+		.update({ finish_time: finishTime.trim() || null, finish_pace: finishPace.trim() || null })
+		.eq("user_id", userId)
+		.eq("card_id", cardId);
+	if (error) console.error("saveRaceResult error:", error);
+	return !error;
+}
+
+export async function isFirstCardOfContinent(userId: string, continent: string, justScannedCardId: string): Promise<boolean> {
+	// All cards the user owns, with their continent
+	const { data: userCards } = await supabase.from("user_cards").select("card_id, card:cards(race:races(continent))").eq("user_id", userId);
+
+	if (!userCards) return true;
+
+	// Count cards in this continent OTHER than the one just scanned
+	const others = userCards.filter((uc: any) => uc.card?.race?.continent === continent && uc.card_id !== justScannedCardId);
+	return others.length === 0;
+}
+
+export async function getUnlockedContinentCount(userId: string): Promise<number> {
+	const { data: userCards } = await supabase.from("user_cards").select("card:cards(race:races(continent))").eq("user_id", userId);
+
+	if (!userCards) return 0;
+	const continents = new Set(userCards.map((uc: any) => uc.card?.race?.continent).filter(Boolean));
+	return continents.size;
+}
+
+export async function getRevealStatus(userId: string, continent: string, justScannedCardId: string): Promise<{ isFirstOfContinent: boolean; allSixComplete: boolean }> {
+	const { data: userCards } = await supabase.from("user_cards").select("card_id, card:cards(race:races(continent))").eq("user_id", userId);
+
+	const owned = userCards ?? [];
+	const continentsOwned = new Set(owned.map((uc: any) => uc.card?.race?.continent).filter(Boolean));
+
+	const othersInContinent = owned.filter((uc: any) => uc.card?.race?.continent === continent && uc.card_id !== justScannedCardId);
+
+	return {
+		isFirstOfContinent: othersInContinent.length === 0,
+		allSixComplete: continentsOwned.size >= 6,
 	};
 }
