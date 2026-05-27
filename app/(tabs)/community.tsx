@@ -196,7 +196,7 @@ export default function Community() {
 
 							{visibleSections.people && suggestedUsers.length > 0 && (
 								<View style={styles.section}>
-									<Text style={styles.sectionTitle}>People to follow</Text>
+									<Text style={styles.sectionTitle}>Top Museums This Week</Text>
 									<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.usersRow}>
 										{suggestedUsers.map((u) => (
 											<Pressable key={u.id} style={styles.userCard} onPress={() => router.push(`/user/${u.id}` as any)}>
@@ -306,7 +306,7 @@ export default function Community() {
 						{(
 							[
 								{ key: "challenges", label: "Suggested Challenges" },
-								{ key: "people", label: "People to Follow" },
+								{ key: "people", label: "Top Museums This Week" },
 								{ key: "activity", label: "Following Activity" },
 							] as const
 						).map((opt) => (
