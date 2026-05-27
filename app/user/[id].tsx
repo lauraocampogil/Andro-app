@@ -14,7 +14,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const CONTINENTS = ["All", "Europe", "Asia", "Africa", "North America", "South America", "Oceania"];
+const CONTINENTS = ["All", "Europe", "Asia", "Africa", "North America", "South America", "Australia"];
 
 export default function UserProfile() {
 	const router = useRouter();

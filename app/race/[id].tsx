@@ -351,14 +351,12 @@ function InfoTab({
 			)}
 
 			<Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>What's included</Text>
-			<View style={styles.includedGrid}>
-				{["Card Race", "Photo Service", "Finisher Medal", "Parking", "Event T-shirts", "Drink Stations", "E-certificate", "Nutrition Stations"].map((item) => (
-					<View key={item} style={styles.includedItem}>
-						<Text style={styles.includedCheck}>✓</Text>
-						<Text style={styles.includedText}>{item}</Text>
-					</View>
-				))}
-			</View>
+			{(race.included_items ?? []).map((item) => (
+				<View key={item} style={styles.includedItem}>
+					<Text style={styles.includedCheck}>✓</Text>
+					<Text style={styles.includedText}>{item}</Text>
+				</View>
+			))}
 		</View>
 	);
 }
