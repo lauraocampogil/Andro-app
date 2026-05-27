@@ -229,7 +229,10 @@ export async function markCardScanned(
 export async function saveRaceResult(userId: string, cardId: string, finishTime: string, finishPace: string): Promise<boolean> {
 	const { error } = await supabase
 		.from("user_cards")
-		.update({ finish_time: finishTime.trim() || null, finish_pace: finishPace.trim() || null })
+		.update({
+			finish_time: finishTime.trim() || null,
+			finish_pace: finishPace.trim() || null,
+		})
 		.eq("user_id", userId)
 		.eq("card_id", cardId);
 	if (error) console.error("saveRaceResult error:", error);

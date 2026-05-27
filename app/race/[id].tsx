@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
+import { ZoomableImage } from "@/components/ZoomableImage";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { useFavoritesStore } from "@/lib/favoritesStore";
@@ -137,10 +138,10 @@ export default function RaceDetail() {
 
 	return (
 		<View style={styles.container}>
-			{/* Hero — the route lives here */}
+			{/* Hero — the route lives here, pinch to zoom */}
 			<View style={styles.hero}>
 				{routeImage ? (
-					<Image source={{ uri: routeImage }} style={styles.heroImage} contentFit="cover" />
+					<ZoomableImage uri={routeImage} style={styles.heroImage} />
 				) : (
 					<View style={[styles.heroImage, styles.heroPlaceholder]}>
 						<Map size={40} color={Colors.white50} strokeWidth={2} />
@@ -148,8 +149,8 @@ export default function RaceDetail() {
 					</View>
 				)}
 
-				<SafeAreaView edges={["top"]} style={styles.heroOverlay}>
-					<View style={styles.heroTop}>
+				<SafeAreaView edges={["top"]} style={styles.heroOverlay} pointerEvents="box-none">
+					<View style={styles.heroTop} pointerEvents="box-none">
 						<View style={styles.cityPill}>
 							<Text style={styles.cityText}>
 								{race.city.toUpperCase()}, {race.country_code}
@@ -161,7 +162,7 @@ export default function RaceDetail() {
 					</View>
 					<View style={styles.routeBadge}>
 						<Map size={13} color={Colors.white} strokeWidth={2.4} />
-						<Text style={styles.routeBadgeText}>The route · {race.distance_km} km</Text>
+						<Text style={styles.routeBadgeText}>Pinch to zoom · {race.distance_km} km</Text>
 					</View>
 				</SafeAreaView>
 			</View>
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
 	heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 	cityPill: { backgroundColor: Colors.white, paddingHorizontal: 18, paddingVertical: 12, borderRadius: Radius.pill },
 	cityText: { fontFamily: Fonts.display, fontStyle: "italic", fontSize: 15, color: Colors.ink, letterSpacing: 0 },
-	closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
+	closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.hoofdkleur, alignItems: "center", justifyContent: "center" },
 	routeBadge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 14, backgroundColor: "rgba(4,8,26,0.6)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.pill },
 	routeBadgeText: { fontFamily: Fonts.bodyBold, fontSize: 12, fontWeight: "700", color: Colors.white },
 
@@ -524,8 +525,7 @@ const styles = StyleSheet.create({
 	registerBtn: { backgroundColor: Colors.secundaire, paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill },
 	registerBtnText: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "800", color: Colors.white },
 
-	includedGrid: { flexDirection: "row", flexWrap: "wrap" },
-	includedItem: { width: "50%", flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+	includedItem: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
 	includedCheck: { color: Colors.white, fontWeight: "800", fontSize: 14 },
 	includedText: { fontFamily: Fonts.body, fontSize: 13, color: Colors.white },
 
