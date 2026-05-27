@@ -5,15 +5,16 @@ import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { resolveCardImage } from "@/lib/cardAssets";
 import { countUnreadMessages } from "@/lib/challengeMessages";
-import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants, leaveChallenge } from "@/lib/challenges";
+import { Challenge, daysLeft, fetchActiveChallenges, fetchChallengeParticipants } from "@/lib/challenges";
 import { getFollowersCount, getFollowingCount } from "@/lib/follows";
 import { fetchMuseumCards, getFeaturedCardId, MuseumCard, setFeaturedCard, unsetFeaturedCard } from "@/lib/museum";
+import { saveRaceResult } from "@/lib/races";
 import { supabase } from "@/lib/supabase";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, ChevronRight, ListFilter, Lock, Settings, Star, X } from "lucide-react-native";
+import { Check, ChevronRight, ListFilter, Lock, Settings, Star, Timer, X } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const CONTINENTS = ["All", "Europe", "Asia", "Africa", "North America", "South America", "Oceania"];
@@ -43,34 +44,43 @@ export default function Profile() {
 	const [lockedModal, setLockedModal] = useState<MuseumCard | null>(null);
 	const [expandedCard, setExpandedCard] = useState<MuseumCard | null>(null);
 
+	// Inline result panel (inside the expanded card modal)
+	const [resultOpen, setResultOpen] = useState(false);
+	const [resultTime, setResultTime] = useState("");
+	const [resultPace, setResultPace] = useState("");
+	const [savingResult, setSavingResult] = useState(false);
+
+	const loadData = useCallback(async () => {
+		if (!userId) return;
+		setLoading(true);
+		const [{ data: prof }, museum, fid, fr, fg, ch] = await Promise.all([
+			supabase.from("profiles").select("display_name, avatar_url").eq("id", userId).maybeSingle(),
+			fetchMuseumCards(userId),
+			getFeaturedCardId(userId),
+			getFollowersCount(userId),
+			getFollowingCount(userId),
+			fetchActiveChallenges(userId),
+		]);
+		setProfile(prof ?? null);
+		setCards(museum);
+		setFeaturedId(fid);
+		setFollowers(fr);
+		setFollowing(fg);
+		setChallenges(ch);
+		setLoading(false);
+	}, [userId]);
+
 	useFocusEffect(
 		useCallback(() => {
-			if (!userId) return;
 			let cancelled = false;
 			(async () => {
-				setLoading(true);
-				const [{ data: prof }, museum, fid, fr, fg, ch] = await Promise.all([
-					supabase.from("profiles").select("display_name, avatar_url").eq("id", userId).maybeSingle(),
-					fetchMuseumCards(userId),
-					getFeaturedCardId(userId),
-					getFollowersCount(userId),
-					getFollowingCount(userId),
-					fetchActiveChallenges(userId),
-				]);
-				if (!cancelled) {
-					setProfile(prof ?? null);
-					setCards(museum);
-					setFeaturedId(fid);
-					setFollowers(fr);
-					setFollowing(fg);
-					setChallenges(ch);
-					setLoading(false);
-				}
+				if (cancelled) return;
+				await loadData();
 			})();
 			return () => {
 				cancelled = true;
 			};
-		}, [userId]),
+		}, [loadData]),
 	);
 
 	const filteredCards = useMemo(() => {
@@ -84,9 +94,19 @@ export default function Profile() {
 
 	const cardWidth = (SCREEN_W - Spacing.lg * 2 - Spacing.sm) / 2;
 
+	const openExpanded = (card: MuseumCard) => {
+		setResultOpen(false);
+		setExpandedCard(card);
+	};
+
+	const closeExpanded = () => {
+		setResultOpen(false);
+		setExpandedCard(null);
+	};
+
 	const handleCardPress = (card: MuseumCard) => {
 		if (card.unlocked) {
-			setExpandedCard(card);
+			openExpanded(card);
 		} else {
 			setLockedModal(card);
 		}
@@ -105,10 +125,23 @@ export default function Profile() {
 		}
 	};
 
-	const handleLeaveChallenge = async (challengeId: string) => {
-		if (!userId) return;
-		const ok = await leaveChallenge(userId, challengeId);
-		if (ok) setChallenges((prev) => prev.filter((x) => x.id !== challengeId));
+	const openResultPanel = () => {
+		setResultTime(expandedCard?.finish_time ?? "");
+		setResultPace(expandedCard?.finish_pace ?? "");
+		setResultOpen(true);
+	};
+
+	const handleSaveResult = async () => {
+		if (!userId || !expandedCard) return;
+		setSavingResult(true);
+		const ok = await saveRaceResult(userId, expandedCard.id, resultTime, resultPace);
+		setSavingResult(false);
+		if (ok) {
+			const updated = { ...expandedCard, finish_time: resultTime.trim() || null, finish_pace: resultPace.trim() || null };
+			setExpandedCard(updated as MuseumCard);
+			setCards((prev) => prev.map((c) => (c.id === updated.id ? (updated as MuseumCard) : c)));
+			setResultOpen(false);
+		}
 	};
 
 	const expandedImage = expandedCard ? resolveCardImage(expandedCard) : null;
@@ -157,7 +190,7 @@ export default function Profile() {
 					{visibleSections.featured && featuredCard && featuredImage && (
 						<View style={styles.featuredSection}>
 							<Text style={styles.sectionTitle}>Featured card</Text>
-							<Pressable onPress={() => setExpandedCard(featuredCard)} style={styles.featuredCard}>
+							<Pressable onPress={() => openExpanded(featuredCard)} style={styles.featuredCard}>
 								<Image source={featuredImage} style={styles.featuredImage} contentFit="cover" />
 								<View style={styles.featuredOverlay}>
 									<Star size={16} color={Colors.white} fill={Colors.white} strokeWidth={2} />
@@ -287,7 +320,7 @@ export default function Profile() {
 			</Modal>
 
 			{/* Expanded card modal */}
-			<Modal visible={expandedCard !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setExpandedCard(null)}>
+			<Modal visible={expandedCard !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeExpanded}>
 				<View style={styles.expandedContainer}>
 					<CosmicBackground>
 						<SafeAreaView edges={["top", "bottom"]} style={{ flex: 1 }}>
@@ -296,12 +329,12 @@ export default function Profile() {
 									<Text style={styles.expandedRarity}>{expandedCard?.rarity.toUpperCase()}</Text>
 									<Text style={styles.expandedName}>{expandedCard?.creature_name}</Text>
 								</View>
-								<Pressable style={styles.expandedCloseBtn} onPress={() => setExpandedCard(null)}>
+								<Pressable style={styles.expandedCloseBtn} onPress={closeExpanded}>
 									<X size={22} color={Colors.white} strokeWidth={2.6} />
 								</Pressable>
 							</View>
 
-							<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+							<ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 								<View style={styles.expandedCardWrap}>
 									{expandedImage && (
 										<View style={styles.expandedCardClip}>
@@ -341,6 +374,31 @@ export default function Profile() {
 										<View style={styles.expandedRow}>
 											<Text style={styles.expandedRowLabel}>Pace</Text>
 											<Text style={styles.expandedRowValue}>{expandedCard.finish_pace}</Text>
+										</View>
+									)}
+
+									{/* Add / edit your result — inline, inside the expanded modal */}
+									<Pressable style={styles.addResultBtn} onPress={openResultPanel}>
+										<Timer size={16} color={Colors.violetLight} strokeWidth={2.4} />
+										<Text style={styles.addResultText}>{expandedCard?.finish_time || expandedCard?.finish_pace ? "Edit your result" : "Add your result"}</Text>
+									</Pressable>
+
+									{resultOpen && (
+										<View style={styles.inlineResult}>
+											<Text style={styles.resultFieldLabel}>Finish time</Text>
+											<TextInput value={resultTime} onChangeText={setResultTime} placeholder="e.g. 3:42:15" placeholderTextColor={Colors.white50} style={styles.resultInput} />
+
+											<Text style={[styles.resultFieldLabel, { marginTop: Spacing.base }]}>Pace</Text>
+											<TextInput value={resultPace} onChangeText={setResultPace} placeholder="e.g. 5:16 /km" placeholderTextColor={Colors.white50} style={styles.resultInput} />
+
+											<View style={styles.filterFooter}>
+												<Pressable style={styles.filterReset} onPress={() => setResultOpen(false)}>
+													<Text style={styles.filterResetText}>Cancel</Text>
+												</Pressable>
+												<Pressable style={[styles.filterApply, savingResult && { opacity: 0.6 }]} disabled={savingResult} onPress={handleSaveResult}>
+													<Text style={styles.filterApplyText}>{savingResult ? "Saving..." : "Save"}</Text>
+												</Pressable>
+											</View>
 										</View>
 									)}
 								</View>
@@ -520,6 +578,23 @@ const styles = StyleSheet.create({
 	filterResetText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
 	filterApply: { flex: 1, paddingVertical: 12, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, alignItems: "center" },
 	filterApplyText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.white },
+
+	resultFieldLabel: { fontFamily: Fonts.bodyBold, fontSize: 13, fontWeight: "700", color: Colors.white, marginBottom: 6 },
+	resultInput: { height: 46, paddingHorizontal: 14, borderRadius: Radius.md, backgroundColor: Colors.white08, borderWidth: 1, borderColor: Colors.white15, color: Colors.white, fontFamily: Fonts.body, fontSize: 14 },
+	inlineResult: { marginTop: Spacing.base, padding: Spacing.base, borderRadius: Radius.lg, backgroundColor: Colors.white08, borderWidth: 1, borderColor: Colors.white15 },
+	addResultBtn: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+		marginTop: Spacing.base,
+		paddingVertical: 12,
+		borderRadius: Radius.pill,
+		borderWidth: 1,
+		borderColor: Colors.violetLight,
+		backgroundColor: "rgba(138, 135, 255, 0.12)",
+	},
+	addResultText: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "800", color: Colors.violetLight },
 
 	modalBackdrop: { flex: 1, backgroundColor: "rgba(4, 8, 26, 0.82)", alignItems: "center", justifyContent: "center" },
 	modalCard: { width: 320, backgroundColor: Colors.hoofdkleur, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.white15, padding: Spacing.lg, alignItems: "center" },
