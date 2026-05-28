@@ -322,7 +322,7 @@ export default function UserProfile() {
 }
 
 const styles = StyleSheet.create({
-	header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
+	header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.base },
 	backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 
 	profileTop: { alignItems: "center", paddingHorizontal: Spacing.lg, marginTop: Spacing.base, marginBottom: Spacing.xl },
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
 		...StyleSheet.absoluteFillObject,
 		alignItems: "center",
 		justifyContent: "center",
-		backgroundColor: "rgba(10, 15, 44, 0.55)",
+		backgroundColor: "rgba(10, 15, 44, 0.80)",
 	},
 	rarityBadge: { position: "absolute", top: 8, right: 8, backgroundColor: Colors.secundaire, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
 	rarityLegendary: { backgroundColor: "#FFD15C" },
