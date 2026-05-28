@@ -8,9 +8,12 @@ import * as THREE from "three";
 const COLOR_DEFAULT = "#38383f";
 const COLOR_COMPLETED = "#79a1ff";
 const COLOR_OCEAN = "#484a56";
+const COLOR_PIN = "#FF5757";
 
 const MIN_ZOOM = 1.5;
 const MAX_ZOOM = 7;
+
+type LatLng = { lat: number; lng: number };
 
 type Props = {
 	completedCountries?: string[];
@@ -19,6 +22,7 @@ type Props = {
 	zoomable?: boolean;
 	cameraDistance?: number;
 	globeRadius?: number;
+	userLocation?: LatLng | null;
 	style?: ViewStyle;
 };
 
@@ -30,19 +34,20 @@ type GlobeInnerProps = {
 	interactive: boolean;
 	zoomable: boolean;
 	globeRadius: number;
+	userLocation?: LatLng | null;
 };
 
-function Globe({ completedCountries, rotationSpeed, manualRotation, zoomRef, interactive, zoomable, globeRadius }: GlobeInnerProps) {
-	React.useEffect(() => {
-		countriesData.features.forEach((f: any) => {
-			const props = f.properties;
-			const code = props.ISO_A3 !== "-99" ? props.ISO_A3 : props.ADM0_A3;
-			if (props.NAME?.includes("French") || props.NAME?.includes("Guiana") || props.NAME?.includes("France") || code === "FRA" || code === "GUF") {
-				console.log(`🔎 Feature: NAME="${props.NAME}", ISO_A3=${props.ISO_A3}, ADM0_A3=${props.ADM0_A3}, code resolved=${code}`);
-			}
-		});
-	}, []);
+// Convert latitude/longitude to a 3D point on the sphere surface
+function latLngToVector(lat: number, lng: number, radius: number): [number, number, number] {
+	const phi = (90 - lat) * (Math.PI / 180);
+	const theta = (lng + 180) * (Math.PI / 180);
+	const x = -(radius * Math.sin(phi) * Math.cos(theta));
+	const z = radius * Math.sin(phi) * Math.sin(theta);
+	const y = radius * Math.cos(phi);
+	return [x, y, z];
+}
 
+function Globe({ completedCountries, rotationSpeed, manualRotation, zoomRef, interactive, zoomable, globeRadius, userLocation }: GlobeInnerProps) {
 	const groupRef = useRef<THREE.Group>(null);
 	const { camera } = useThree();
 
@@ -62,6 +67,9 @@ function Globe({ completedCountries, rotationSpeed, manualRotation, zoomRef, int
 		}
 	});
 
+	// Position the pin slightly above the surface so it sits on top
+	const pinPos = userLocation ? latLngToVector(userLocation.lat, userLocation.lng, globeRadius * 1.02) : null;
+
 	return (
 		<group ref={groupRef}>
 			<mesh>
@@ -70,21 +78,27 @@ function Globe({ completedCountries, rotationSpeed, manualRotation, zoomRef, int
 			</mesh>
 
 			{countriesData.features.map((feature: any, idx: number) => {
-				// Fallback to ADM0_A3 when ISO_A3 is missing (-99) — Natural Earth quirk for France, Norway, etc.
 				const code = feature.properties.ISO_A3 !== "-99" ? feature.properties.ISO_A3 : feature.properties.ADM0_A3;
-
 				const isCompleted = completedCountries.includes(code);
 				const color = isCompleted ? COLOR_COMPLETED : COLOR_DEFAULT;
-
 				const polygons: number[][][][] = feature.geometry.type === "MultiPolygon" ? feature.geometry.coordinates : [feature.geometry.coordinates];
-
 				return <Country key={`${code}-${idx}-${color}`} polygons={polygons} radius={globeRadius} color={color} countryCode={code} />;
 			})}
+
+			{/* User location pin */}
+			{pinPos && (
+				<group position={pinPos}>
+					<mesh>
+						<sphereGeometry args={[globeRadius * 0.035, 16, 16]} />
+						<meshStandardMaterial color={COLOR_PIN} emissive={COLOR_PIN} emissiveIntensity={0.6} />
+					</mesh>
+				</group>
+			)}
 		</group>
 	);
 }
 
-export function Globe3D({ completedCountries = [], rotationSpeed = 0.1, interactive = false, zoomable = false, cameraDistance = 2.5, globeRadius = 0.8, style }: Props) {
+export function Globe3D({ completedCountries = [], rotationSpeed = 0.1, interactive = false, zoomable = false, cameraDistance = 2.5, globeRadius = 0.8, userLocation = null, style }: Props) {
 	const zoomRef = useRef(cameraDistance);
 	const manualRotation = useRef({ x: 0, y: 0 });
 	const lastPan = useRef({ x: 0, y: 0 });
@@ -145,7 +159,7 @@ export function Globe3D({ completedCountries = [], rotationSpeed = 0.1, interact
 				<pointLight position={[-3, 2, -3]} intensity={0.6} color="#8A87FF" />
 				<pointLight position={[0, -3, 2]} intensity={0.4} color="#5B58EB" />
 				<Suspense fallback={null}>
-					<Globe completedCountries={completedCountries} rotationSpeed={rotationSpeed} manualRotation={manualRotation} zoomRef={zoomRef} interactive={interactive} zoomable={zoomable} globeRadius={globeRadius} />
+					<Globe completedCountries={completedCountries} rotationSpeed={rotationSpeed} manualRotation={manualRotation} zoomRef={zoomRef} interactive={interactive} zoomable={zoomable} globeRadius={globeRadius} userLocation={userLocation} />
 				</Suspense>
 			</Canvas>
 		</View>

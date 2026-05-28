@@ -7,6 +7,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
 import { hasContinentImage } from "@/lib/continentAssets";
+import { getCurrentLocation } from "@/lib/location";
 import { useRacesStore } from "@/lib/racesStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -54,6 +55,14 @@ export default function Home() {
 		router.replace("/(auth)/welcome" as any);
 	};
 
+	const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+	useEffect(() => {
+		(async () => {
+			const loc = await getCurrentLocation("city");
+			if (loc) setUserLoc({ lat: loc.latitude, lng: loc.longitude });
+		})();
+	}, []);
+
 	return (
 		<CosmicBackground>
 			<SafeAreaView edges={["top"]} style={{ flex: 1 }}>
@@ -66,8 +75,7 @@ export default function Home() {
 				/>
 
 				<View style={styles.globeWrapper}>
-					<Globe3D completedCountries={countryCodes} rotationSpeed={0.15} interactive={true} globeRadius={0.8} style={styles.globeCanvas} />
-
+					<Globe3D completedCountries={countryCodes} rotationSpeed={0.15} interactive={true} globeRadius={0.8} userLocation={userLoc} style={styles.globeCanvas} />
 					<Pressable style={styles.zoomButton} onPress={() => router.push("/(tabs)/globe" as any)}>
 						<Maximize2 size={18} color={Colors.white} strokeWidth={2.5} />
 					</Pressable>
