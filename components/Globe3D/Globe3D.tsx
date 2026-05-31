@@ -1,5 +1,6 @@
 import countriesData from "@/assets/data/countries.json";
 import { Country } from "@/components/Globe3D/Country";
+import { latLngToVector3 } from "@/lib/geo";
 import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
 import React, { Suspense, useRef } from "react";
 import { PanResponder, StyleSheet, View, ViewStyle } from "react-native";
@@ -66,9 +67,8 @@ function Globe({ completedCountries, rotationSpeed, manualRotation, zoomRef, int
 			groupRef.current.rotation.y += delta * rotationSpeed;
 		}
 	});
-
-	// Position the pin slightly above the surface so it sits on top
-	const pinPos = userLocation ? latLngToVector(userLocation.lat, userLocation.lng, globeRadius * 1.02) : null;
+	const pinVec = userLocation ? latLngToVector3(userLocation.lat, userLocation.lng, globeRadius * 1.01) : null;
+	const pinPos: [number, number, number] | null = pinVec ? [pinVec.x, pinVec.y, pinVec.z] : null;
 
 	return (
 		<group ref={groupRef}>
