@@ -5,10 +5,10 @@
 Een gamified hardloop-app die elke race ter wereld verandert in een verzamelbaar kaart.
 Loop races, scan je fysieke kaarten en kleur jouw 3D-wereldbol race per keer.
 
-[![Expo](https://img.shields.io/badge/Expo-SDK%2052-000020?logo=expo&logoColor=white)](https://expo.dev)
-[![React Native](https://img.shields.io/badge/React%20Native-0.76-61DAFB?logo=react&logoColor=black)](https://reactnative.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Supabase](https://img.shields.io/badge/Supabase-Backend-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[Expo]
+[React Native]
+[TypeScript]
+[Supabase]
 
 Final Work Laura Ocampo 3A MCT, Web & Mobile Development Erasmushogeschool Brussel 
 
@@ -22,7 +22,7 @@ Het kernidee: je wereldbol begint volledig grijs. Elke race die je loopt levert 
 
 De mascotte heet **Andro**: een kawaii-astronaut met de aarde als hoofd want wie de wereld wil kleuren, moet de wereld eerst leren kennen.
 
-### ✨ Kernfuncties
+### Kernfuncties
 
 | Functie | Beschrijving |
 |---------|-------------|
@@ -99,11 +99,9 @@ EXPO_PUBLIC_SUPABASE_URL=https://<jouw-project>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<jouw-anon-key>
 ```
 
-> ⚠️ **Belangrijk:** commit nooit je `.env`-bestand of de Supabase `service_role`-sleutel. De `anon`-key is veilig voor de client; de `service_role`-key mag uitsluitend server-side gebruikt worden.
-
 ---
 
-## 📁 Projectstructuur
+## Projectstructuur
 
 ```
 andro/
@@ -136,7 +134,7 @@ andro/
 
 ---
 
-## 🗄️ Database (Supabase)
+## Database (Supabase)
 
 Meest belangrijke tabellen:
 
@@ -149,7 +147,7 @@ Meest belangrijke tabellen:
 
 ---
 
-## 📄 Documentatie
+## Documentatie
 
 - **Gebruikersdocumentatie** handleiding voor de eindgebruiker
 - **Onderhoudsdocumentatie** technische gids voor beheer en doorontwikkeling
@@ -160,7 +158,7 @@ Alle deliverables zitten in de bronbestanden van het Final Work.
 
 ---
 
-## 👤 Auteur
+## Auteur
 
 **Laura Ocampo**
 3A Multimedia & Creative Technology
@@ -170,6 +168,6 @@ Begeleider: Kobe Vermeire
 
 ---
 
-## 📜 Licentie
+## Licentie
 
 Dit project werd ontwikkeld als academisch Final Work. Alle rechten op het concept, de mascotte Andro en de visuele identiteit behoren toe aan de auteur.
