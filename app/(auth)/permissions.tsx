@@ -2,10 +2,13 @@ import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/lib/auth";
+import { getCurrentLocation, requestLocationPermission, saveUserLocation } from "@/lib/location";
+import { updateSetting } from "@/lib/settings";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Bell, Camera, MapPin } from "lucide-react-native";
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const PERMS = [
@@ -16,17 +19,65 @@ const PERMS = [
 
 export default function Permissions() {
 	const router = useRouter();
-	const { completeOnboarding } = useAuth();
+	const { completeOnboarding, session } = useAuth();
+	const userId = session?.user?.id;
 
-	// État des toggles - tous activés par défaut
 	const [toggles, setToggles] = useState<Record<string, boolean>>({
-		location: true,
-		camera: true,
-		notifications: true,
+		location: false,
+		camera: false,
+		notifications: false,
 	});
+	const [busy, setBusy] = useState(false);
 
-	const togglePermission = (key: string) => {
-		setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
+	const togglePermission = async (key: string) => {
+		// If currently ON → just turn off (cannot revoke OS permission from code)
+		if (toggles[key]) {
+			setToggles((prev) => ({ ...prev, [key]: false }));
+			if (key === "location" && userId) {
+				await updateSetting(userId, "location_enabled", false);
+			}
+			return;
+		}
+
+		setBusy(true);
+
+		// Currently OFF → request real OS permission
+		if (key === "location") {
+			const granted = await requestLocationPermission();
+			if (!granted) {
+				setBusy(false);
+				Alert.alert("Location permission denied", "Enable it later in your device Settings to find races near you.", [{ text: "OK" }, { text: "Open Settings", onPress: () => Linking.openSettings() }]);
+				return;
+			}
+			// Fetch & save real location
+			if (userId) {
+				const loc = await getCurrentLocation("city");
+				if (loc) await saveUserLocation(userId, loc);
+				await updateSetting(userId, "location_enabled", true);
+				await updateSetting(userId, "location_precision", "city");
+			}
+			setToggles((prev) => ({ ...prev, location: true }));
+		}
+
+		if (key === "camera") {
+			const { status } = await ImagePicker.requestCameraPermissionsAsync();
+			if (status !== "granted") {
+				setBusy(false);
+				Alert.alert("Camera permission denied", "You won't be able to scan race cards. Enable it later in Settings.", [{ text: "OK" }, { text: "Open Settings", onPress: () => Linking.openSettings() }]);
+				return;
+			}
+			setToggles((prev) => ({ ...prev, camera: true }));
+		}
+
+		if (key === "notifications") {
+			// For real push notifs we'd use expo-notifications. For now, just save preference.
+			if (userId) {
+				await updateSetting(userId, "notifications_enabled", true);
+			}
+			setToggles((prev) => ({ ...prev, notifications: true }));
+		}
+
+		setBusy(false);
 	};
 
 	const handleEnter = async () => {
@@ -50,7 +101,7 @@ export default function Permissions() {
 						{PERMS.map(({ key, Icon, title, desc }) => {
 							const isOn = toggles[key];
 							return (
-								<Pressable key={key} onPress={() => togglePermission(key)} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
+								<Pressable key={key} onPress={() => togglePermission(key)} disabled={busy} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }, busy && { opacity: 0.6 }]}>
 									<View style={styles.iconBox}>
 										<Icon size={22} color={Colors.white} strokeWidth={2} />
 									</View>
@@ -90,28 +141,10 @@ const styles = StyleSheet.create({
 	rTitle: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.body, fontWeight: "700", color: Colors.white, marginBottom: 2 },
 	rDesc: { fontFamily: Fonts.body, fontSize: FontSizes.small, color: Colors.white70 },
 
-	// Toggles
-	toggleTrack: {
-		width: 44,
-		height: 26,
-		borderRadius: 13,
-		backgroundColor: Colors.white15,
-		padding: 3,
-		justifyContent: "center",
-	},
-	toggleTrackOn: {
-		backgroundColor: Colors.secundaire,
-	},
-	toggleThumb: {
-		width: 20,
-		height: 20,
-		borderRadius: 10,
-		backgroundColor: Colors.white,
-		alignSelf: "flex-start",
-	},
-	toggleThumbOn: {
-		alignSelf: "flex-end",
-	},
+	toggleTrack: { width: 44, height: 26, borderRadius: 13, backgroundColor: Colors.white15, padding: 3, justifyContent: "center" },
+	toggleTrackOn: { backgroundColor: Colors.secundaire },
+	toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.white, alignSelf: "flex-start" },
+	toggleThumbOn: { alignSelf: "flex-end" },
 
 	link: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: Colors.white70, marginTop: 16 },
 });

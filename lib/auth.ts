@@ -5,6 +5,17 @@ import { create } from "zustand";
 
 const ONBOARDING_KEY = "andro_onboarding_completed";
 
+function friendlyAuthError(message: string | undefined): string {
+	if (!message) return "Something went wrong. Please try again.";
+	const m = message.toLowerCase();
+	if (m.includes("invalid login")) return "Email or password is incorrect.";
+	if (m.includes("email not confirmed")) return "Please confirm your email first — check your inbox.";
+	if (m.includes("user already registered") || m.includes("already been registered")) return "An account with this email already exists.";
+	if (m.includes("password")) return "Password must be at least 6 characters.";
+	if (m.includes("network") || m.includes("fetch")) return "No connection. Check your internet and try again.";
+	return message;
+}
+
 type AuthState = {
 	session: Session | null;
 	user: User | null;
@@ -14,6 +25,7 @@ type AuthState = {
 	init: () => Promise<void>;
 	signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
 	signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+	resetPassword: (email: string) => Promise<{ error: string | null }>;
 	signOut: () => Promise<void>;
 	completeOnboarding: () => Promise<void>;
 };
@@ -47,7 +59,7 @@ export const useAuth = create<AuthState>((set) => ({
 			options: { data: { display_name: displayName } },
 		});
 		set({ loading: false });
-		return { error: error?.message ?? null };
+		return { error: error ? friendlyAuthError(error.message) : null };
 	},
 
 	signIn: async (email, password) => {
@@ -58,7 +70,14 @@ export const useAuth = create<AuthState>((set) => ({
 			set({ onboardingCompleted: true });
 		}
 		set({ loading: false });
-		return { error: error?.message ?? null };
+		return { error: error ? friendlyAuthError(error.message) : null };
+	},
+
+	resetPassword: async (email) => {
+		set({ loading: true });
+		const { error } = await supabase.auth.resetPasswordForEmail(email);
+		set({ loading: false });
+		return { error: error ? friendlyAuthError(error.message) : null };
 	},
 
 	signOut: async () => {

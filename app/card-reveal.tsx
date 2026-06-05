@@ -1,15 +1,19 @@
 import { Button } from "@/components/Button";
 import { CosmicBackground } from "@/components/CosmicBackground";
 import { Colors, Fonts, FontSizes, Radius, Spacing } from "@/constants/theme";
-import { resolveCardImage } from "@/lib/cardAssets";
+import { cardBack, resolveCardImage } from "@/lib/cardAssets";
+import { getRevealStatus } from "@/lib/races";
 import { supabase } from "@/lib/supabase";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import * as Sharing from "expo-sharing";
+import { Share2 } from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { captureRef } from "react-native-view-shot";
 
-const TOTAL_CARDS = 10;
+const TOTAL_CARDS = 8;
 
 type CardData = {
 	id: string;
@@ -26,6 +30,8 @@ type CardData = {
 	};
 };
 
+type RevealStatus = { isFirstOfContinent: boolean; allSixComplete: boolean };
+
 export default function CardReveal() {
 	const router = useRouter();
 	const params = useLocalSearchParams<{ qr: string; already?: string }>();
@@ -35,6 +41,10 @@ export default function CardReveal() {
 	const [card, setCard] = useState<CardData | null>(null);
 	const [unlockedCount, setUnlockedCount] = useState(0);
 	const [showContent, setShowContent] = useState(false);
+	const [revealStatus, setRevealStatus] = useState<RevealStatus | null>(null);
+	const [sharing, setSharing] = useState(false);
+
+	const cardRef = useRef<View>(null);
 
 	const flipValue = useSharedValue(0);
 	const scale = useSharedValue(0.5);
@@ -54,11 +64,16 @@ export default function CardReveal() {
 			if (user) {
 				const { count } = await supabase.from("user_cards").select("*", { count: "exact", head: true }).eq("user_id", user.id);
 				setUnlockedCount(count || 0);
+
+				if (cardData && !alreadyCollected && (cardData as CardData).race?.continent) {
+					const status = await getRevealStatus(user.id, (cardData as CardData).race.continent!, (cardData as CardData).id);
+					setRevealStatus(status);
+				}
 			}
 		};
 
 		loadCard();
-	}, [qrCode]);
+	}, [qrCode, alreadyCollected]);
 
 	useEffect(() => {
 		if (!card) return;
@@ -76,16 +91,12 @@ export default function CardReveal() {
 
 	const frontAnimatedStyle = useAnimatedStyle(() => {
 		const rotateY = `${flipValue.value * 180 + 180}deg`;
-		return {
-			transform: [{ scale: scale.value }, { rotateY }],
-		};
+		return { transform: [{ scale: scale.value }, { rotateY }] };
 	});
 
 	const backAnimatedStyle = useAnimatedStyle(() => {
 		const rotateY = `${flipValue.value * 180}deg`;
-		return {
-			transform: [{ scale: scale.value }, { rotateY }],
-		};
+		return { transform: [{ scale: scale.value }, { rotateY }] };
 	});
 
 	const contentAnimatedStyle = useAnimatedStyle(() => ({
@@ -94,21 +105,36 @@ export default function CardReveal() {
 
 	const cardImage = useMemo(() => (card ? resolveCardImage(card) : null), [card]);
 
-	useEffect(() => {
-		if (card) {
-			console.log("🎴 CARD DATA:", JSON.stringify(card, null, 2));
-			console.log("🖼️ resolved cardImage:", cardImage);
-			console.log("🖼️ typeof cardImage:", typeof cardImage);
-			console.log("🖼️ cardImage === null:", cardImage === null);
+	const handleShare = async () => {
+		if (!cardRef.current) return;
+		try {
+			setSharing(true);
+			const uri = await captureRef(cardRef, { format: "png", quality: 1 });
+			const available = await Sharing.isAvailableAsync();
+			if (!available) {
+				console.warn("Sharing not available on this device");
+				return;
+			}
+			await Sharing.shareAsync(uri, {
+				mimeType: "image/png",
+				dialogTitle: `My ${card?.creature_name} card from Andro`,
+			});
+		} catch (err) {
+			console.error("Share failed:", err);
+		} finally {
+			setSharing(false);
 		}
-	}, [card, cardImage]);
+	};
 
 	const handleContinue = () => {
-		if (!alreadyCollected && card?.race?.continent) {
-			router.replace({
-				pathname: "/(tabs)/home",
-				params: { unlockedContinent: card.race.continent },
-			} as any);
+		if (alreadyCollected) {
+			router.replace("/(tabs)/home" as any);
+			return;
+		}
+		if (revealStatus?.allSixComplete) {
+			router.replace({ pathname: "/(tabs)/home", params: { allContinentsComplete: "true" } } as any);
+		} else if (revealStatus?.isFirstOfContinent && card?.race?.continent) {
+			router.replace({ pathname: "/(tabs)/home", params: { unlockedContinent: card.race.continent } } as any);
 		} else {
 			router.replace("/(tabs)/home" as any);
 		}
@@ -133,16 +159,14 @@ export default function CardReveal() {
 					<Text style={styles.headerText}>{alreadyCollected ? "Already in your collection" : "Card Unlocked!"}</Text>
 				</View>
 
-				<View style={styles.cardWrapper}>
+				<View ref={cardRef} collapsable={false} style={styles.cardWrapper}>
 					<Animated.View style={[styles.card, styles.cardBack, backAnimatedStyle]}>
-						<View style={styles.cardBackContent}>
-							<Text style={styles.cardBackLogo}>ANDRO</Text>
-						</View>
+						<Image source={cardBack} style={styles.cardImage} resizeMode="cover" />
 					</Animated.View>
 
 					<Animated.View style={[styles.card, styles.cardFront, frontAnimatedStyle]}>
 						{cardImage ? (
-							<Image source={cardImage} style={styles.cardImage} resizeMode="contain" />
+							<Image source={cardImage} style={styles.cardImage} resizeMode="cover" />
 						) : (
 							<View style={[styles.cardPlaceholder, { backgroundColor: glowColor + "30" }]}>
 								<Text style={styles.cardPlaceholderEmoji}>{card.rarity === "legendary" ? "👑" : "✨"}</Text>
@@ -166,8 +190,13 @@ export default function CardReveal() {
 					</View>
 				</Animated.View>
 
-				<Animated.View style={[styles.buttonWrapper, contentAnimatedStyle]}>
-					<Button label="Continue" onPress={handleContinue} />
+				<Animated.View style={[styles.bottomRow, contentAnimatedStyle]}>
+					<Pressable style={[styles.shareBtn, sharing && { opacity: 0.6 }]} onPress={handleShare} disabled={sharing}>
+						<Share2 size={20} color={Colors.white} strokeWidth={2.4} />
+					</Pressable>
+					<View style={{ flex: 1 }}>
+						<Button label="Continue" onPress={handleContinue} />
+					</View>
 				</Animated.View>
 			</SafeAreaView>
 		</CosmicBackground>
@@ -181,27 +210,8 @@ const styles = StyleSheet.create({
 	container: { flex: 1, alignItems: "center", justifyContent: "space-between", paddingVertical: Spacing.xl },
 	loadingText: { color: Colors.white, fontFamily: Fonts.body },
 	header: { alignItems: "center", marginTop: Spacing.lg },
-	headerText: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h2,
-		fontStyle: "italic",
-		color: Colors.violetLight,
-		letterSpacing: 1,
-	},
-	cardWrapper: {
-		width: CARD_WIDTH,
-		height: CARD_HEIGHT,
-		alignItems: "center",
-		justifyContent: "center",
-		position: "relative",
-	},
-	glow: {
-		position: "absolute",
-		width: CARD_WIDTH + 60,
-		height: CARD_HEIGHT + 60,
-		borderRadius: CARD_WIDTH,
-		opacity: 0.3,
-	},
+	headerText: { fontFamily: Fonts.display, fontSize: FontSizes.h2, fontStyle: "italic", color: Colors.violetLight, letterSpacing: 1 },
+	cardWrapper: { width: CARD_WIDTH, height: CARD_HEIGHT, alignItems: "center", justifyContent: "center", position: "relative", marginTop: Spacing.lg },
 	card: {
 		position: "absolute",
 		width: CARD_WIDTH,
@@ -216,63 +226,16 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 		backfaceVisibility: "hidden",
 	},
-	cardBack: {
-		backgroundColor: Colors.primaireVive,
-		alignItems: "center",
-		justifyContent: "center",
-		borderWidth: 2,
-		borderColor: Colors.secundaire,
-	},
-	cardBackContent: { alignItems: "center" },
-	cardBackLogo: {
-		fontFamily: Fonts.display,
-		fontSize: 42,
-		fontStyle: "italic",
-		color: Colors.white,
-		letterSpacing: 4,
-	},
-	cardFront: {
-		backgroundColor: "transparent",
-	},
-	cardImage: {
-		width: "100%",
-		height: "100%",
-		backgroundColor: "transparent",
-	},
-	cardPlaceholder: {
-		flex: 1,
-		alignItems: "center",
-		justifyContent: "center",
-		padding: Spacing.lg,
-	},
+	cardBack: { alignItems: "center", justifyContent: "center" },
+	cardFront: { backgroundColor: "transparent" },
+	cardImage: { width: "100%", height: "100%", backgroundColor: "transparent" },
+	cardPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.lg },
 	cardPlaceholderEmoji: { fontSize: 64, marginBottom: Spacing.base },
-	cardPlaceholderName: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h1,
-		fontStyle: "italic",
-		color: Colors.ink,
-		textAlign: "center",
-	},
-	info: { alignItems: "center", paddingHorizontal: Spacing.xl },
-	creatureName: {
-		fontFamily: Fonts.display,
-		fontSize: FontSizes.h1,
-		fontStyle: "italic",
-		color: Colors.white,
-		marginBottom: 4,
-	},
-	raceName: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: FontSizes.body,
-		color: Colors.violetLight,
-		marginBottom: 2,
-	},
-	raceLocation: {
-		fontFamily: Fonts.body,
-		fontSize: FontSizes.small,
-		color: Colors.white50 ?? "#ffffff80",
-		marginBottom: Spacing.lg,
-	},
+	cardPlaceholderName: { fontFamily: Fonts.display, fontSize: FontSizes.h1, fontStyle: "italic", color: Colors.ink, textAlign: "center" },
+	info: { alignItems: "center", paddingHorizontal: Spacing.xl, marginTop: Spacing.lg },
+	creatureName: { fontFamily: Fonts.display, fontSize: FontSizes.h1, fontStyle: "italic", color: Colors.white, marginBottom: 4 },
+	raceName: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.body, color: Colors.violetLight, marginBottom: 2 },
+	raceLocation: { fontFamily: Fonts.body, fontSize: FontSizes.small, color: Colors.white50 ?? "#ffffff80", marginBottom: Spacing.sm },
 	counter: {
 		flexDirection: "row",
 		alignItems: "baseline",
@@ -282,24 +245,29 @@ const styles = StyleSheet.create({
 		paddingHorizontal: Spacing.lg,
 		paddingVertical: Spacing.base,
 		borderRadius: Radius.lg,
+		marginBottom: Spacing.lg,
 	},
-	counterNum: {
-		fontFamily: Fonts.display,
-		fontSize: 32,
-		fontStyle: "italic",
-		color: Colors.white,
+	counterNum: { fontFamily: Fonts.display, fontSize: 32, fontStyle: "italic", color: Colors.white },
+	counterTotal: { fontFamily: Fonts.bodyBold, fontSize: FontSizes.body, color: Colors.violetLight },
+	counterLabel: { fontFamily: Fonts.body, fontSize: FontSizes.small, color: Colors.white, marginLeft: Spacing.base, opacity: 0.8 },
+
+	bottomRow: {
+		width: "100%",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		paddingHorizontal: Spacing.xl,
+		paddingTop: Spacing.base,
+		paddingBottom: Spacing.lg,
 	},
-	counterTotal: {
-		fontFamily: Fonts.bodyBold,
-		fontSize: FontSizes.body,
-		color: Colors.violetLight,
+	shareBtn: {
+		width: 52,
+		height: 52,
+		borderRadius: 26,
+		borderWidth: 1,
+		borderColor: Colors.white30,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(255,255,255,0.05)",
 	},
-	counterLabel: {
-		fontFamily: Fonts.body,
-		fontSize: FontSizes.small,
-		color: Colors.white,
-		marginLeft: Spacing.base,
-		opacity: 0.8,
-	},
-	buttonWrapper: { width: "100%", paddingHorizontal: Spacing.xl },
 });

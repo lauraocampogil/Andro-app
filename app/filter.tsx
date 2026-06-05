@@ -117,7 +117,7 @@ export default function FilterScreen() {
 					<View style={styles.header}>
 						<Text style={styles.title}>FILTER</Text>
 						<Pressable style={styles.closeBtn} onPress={() => router.back()}>
-							<X size={22} color={Colors.ink} strokeWidth={2.6} />
+							<X size={22} color={Colors.white} strokeWidth={2.6} />
 						</Pressable>
 					</View>
 
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
 		marginBottom: Spacing.xl,
 	},
 	title: { fontFamily: Fonts.display, fontSize: FontSizes.h2, fontStyle: "italic", color: Colors.white, letterSpacing: 1 },
-	closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white, alignItems: "center", justifyContent: "center" },
+	closeBtn: { width: 44, height: 44, borderRadius: 25, backgroundColor: Colors.white15, alignItems: "center", justifyContent: "center" },
 	row2: { flexDirection: "row", gap: Spacing.lg, marginBottom: Spacing.lg },
 	fieldLabel: { fontFamily: Fonts.bodyBold, fontSize: 14, fontWeight: "700", color: Colors.white, marginBottom: Spacing.sm },
 	dropdown: { height: 38, paddingHorizontal: 14, borderRadius: Radius.pill, backgroundColor: Colors.secundaire, flexDirection: "row", alignItems: "center", justifyContent: "space-between", alignSelf: "flex-start", minWidth: 110 },

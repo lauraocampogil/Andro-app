@@ -3,6 +3,7 @@ import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
 	const { initialized, session, onboardingCompleted, init } = useAuth();
@@ -35,7 +36,7 @@ export default function RootLayout() {
 	if (!initialized || !fontsLoaded) return null;
 
 	return (
-		<>
+		<GestureHandlerRootView style={{ flex: 1 }}>
 			<StatusBar style="light" />
 			<Stack screenOptions={{ headerShown: false, animation: "fade" }}>
 				<Stack.Screen name="index" />
@@ -44,6 +45,6 @@ export default function RootLayout() {
 				<Stack.Screen name="card-reveal" />
 				<Stack.Screen name="race/[id]" options={{ headerShown: false }} />
 			</Stack>
-		</>
+		</GestureHandlerRootView>
 	);
 }

@@ -9,8 +9,8 @@ function TabBar({ state, navigation }: any) {
 		{ name: "home", Icon: Globe },
 		{ name: "races", Icon: Footprints },
 		{ name: "scan", Icon: ScanLine, isCenter: true },
-		{ name: "profile", Icon: Landmark },
 		{ name: "community", Icon: Users },
+		{ name: "profile", Icon: Landmark },
 	];
 
 	return (
@@ -45,8 +45,8 @@ export default function TabsLayout() {
 			<Tabs.Screen name="home" />
 			<Tabs.Screen name="races" />
 			<Tabs.Screen name="scan" />
-			<Tabs.Screen name="profile" />
 			<Tabs.Screen name="community" />
+			<Tabs.Screen name="profile" />
 			<Tabs.Screen name="globe" options={{ href: null }} />
 		</Tabs>
 	);
