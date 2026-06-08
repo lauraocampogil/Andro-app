@@ -7,7 +7,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const CARD = require("@/assets/cards/card_brussel.png");
+const CARD = require("@/assets/cards/card_melbourne.png");
+const CARD1 = require("@/assets/cards/card_capetown.png");
+const CARD2 = require("@/assets/cards/card_tokyo.png");
 
 export default function Concept() {
 	const router = useRouter();
@@ -28,10 +30,10 @@ export default function Concept() {
 								<Image source={CARD} style={styles.cardImg} contentFit="cover" cachePolicy="memory-disk" />
 							</View>
 							<View style={[styles.cardWrap, styles.cardRight]}>
-								<Image source={CARD} style={styles.cardImg} contentFit="cover" cachePolicy="memory-disk" />
+								<Image source={CARD1} style={styles.cardImg} contentFit="cover" cachePolicy="memory-disk" />
 							</View>
 							<View style={[styles.cardWrap, styles.cardCenter]}>
-								<Image source={CARD} style={styles.cardImg} contentFit="cover" cachePolicy="memory-disk" />
+								<Image source={CARD2} style={styles.cardImg} contentFit="cover" cachePolicy="memory-disk" />
 							</View>
 						</View>
 

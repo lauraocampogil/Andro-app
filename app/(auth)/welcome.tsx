@@ -14,7 +14,7 @@ export default function Welcome() {
 		<CosmicBackground>
 			<SafeAreaView style={{ flex: 1 }}>
 				<View style={styles.container}>
-					<Image source={require("@/assets/animations/welcome_animation.gif")} style={styles.animation} contentFit="contain" />
+					<Image source={require("@/assets/animations/hero_animation.gif")} style={styles.animation} contentFit="contain" />
 
 					<GradientText style={styles.wordmark}>Andro</GradientText>
 					<Text style={styles.slogan}>Run the world.</Text>

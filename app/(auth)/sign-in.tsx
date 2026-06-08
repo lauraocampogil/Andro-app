@@ -41,7 +41,7 @@ export default function SignIn() {
 					<ScrollView contentContainerStyle={styles.c} keyboardShouldPersistTaps="handled">
 						<Text style={styles.title}>Welcome back</Text>
 						<Text style={styles.sub}>Andro missed you.</Text>
-						<Image source={require("@/assets/animations/welcome_animation.gif")} style={styles.animation} contentFit="contain" />
+						<Image source={require("@/assets/animations/waving_animation.gif")} style={styles.animation} contentFit="contain" />
 						<View style={{ marginTop: 32 }}>
 							<Input label="Email" value={email} onChangeText={setEmail} placeholder="jean@example.com" autoCapitalize="none" keyboardType="email-address" />
 							<Input label="Password" value={password} onChangeText={setPassword} placeholder="Your password" secureTextEntry error={error || undefined} />
@@ -70,5 +70,5 @@ const styles = StyleSheet.create({
 	link: { fontFamily: Fonts.body, fontSize: FontSizes.body, color: Colors.violetLight, marginTop: 16, textAlign: "center" },
 	forgot: { fontFamily: Fonts.body, fontSize: 13, color: Colors.violetLight, textAlign: "right", marginTop: 4 },
 	info: { fontFamily: Fonts.body, fontSize: 13, color: "#79a1ff", textAlign: "center", marginTop: 12 },
-	animation: { width: 160, height: 160, marginBottom: 8 },
+	animation: { width: 350, height: 250, marginBottom: 2 },
 });

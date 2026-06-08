@@ -48,7 +48,7 @@ export function AllContinentsPopup({ visible, onClose }: Props) {
 
 						<View style={styles.visual}>
 							<Animated.View style={floatStyle}>
-								<Image source={require("@/assets/animations/welcome_animation.gif")} style={styles.animation} contentFit="contain" />
+								<Image source={require("@/assets/animations/celebration_animation.gif")} style={styles.animation} contentFit="contain" />
 							</Animated.View>
 						</View>
 
