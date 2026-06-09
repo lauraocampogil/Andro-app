@@ -64,7 +64,15 @@ export default function CreateChallenge() {
 
 	const filteredRaces = races.filter((r) => {
 		if (continent && r.continent !== continent) return false;
-		if (distance && r.distance_km !== distance) return false;
+		if (distance) {
+			if (distance === 42) {
+				if (!(r.distance_km >= 42 || r.is_major)) return false;
+			} else if (distance === 21) {
+				if (!(r.distance_km >= 21 && r.distance_km < 25) && !r.is_superhalf) return false;
+			} else {
+				if (r.distance_km !== distance) return false;
+			}
+		}
 		return true;
 	});
 

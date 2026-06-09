@@ -102,7 +102,15 @@ export default function Races() {
 			list = list.filter((r) => r.name.toLowerCase().includes(q) || r.city.toLowerCase().includes(q) || r.country.toLowerCase().includes(q));
 		}
 		if (filters.continents.length) list = list.filter((r) => filters.continents.includes(r.continent));
-		if (filters.distances.length) list = list.filter((r) => filters.distances.includes(r.distance_km));
+		if (filters.distances.length) {
+			list = list.filter((r) => {
+				return filters.distances.some((d) => {
+					if (d === 42) return r.distance_km >= 42 || r.is_major;
+					if (d === 21) return (r.distance_km >= 21 && r.distance_km < 25) || r.is_superhalf;
+					return r.distance_km === d;
+				});
+			});
+		}
 		if (filters.levels.length) list = list.filter((r) => filters.levels.includes(r.level));
 		if (filters.surfaces.length) list = list.filter((r) => filters.surfaces.includes(r.surface));
 		if (filters.superHalf) list = list.filter((r) => r.is_superhalf);

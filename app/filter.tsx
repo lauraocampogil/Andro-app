@@ -9,7 +9,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const CONTINENTS = ["Africa", "Asia", "Australia", "Europe", "North America", "South America"];
-const DISTANCES = [5, 10, 24, 42];
+const DISTANCES = [5, 10, 21, 42];
 const LEVELS: Level[] = ["beginner", "intermediate", "advanced"];
 const SURFACES = ["Asphalt", "Mud", "Other", "Terrain", "Sand", "Trail", "Snow", "Grass", "Mixed"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
