@@ -1,6 +1,6 @@
 # Andro
 
-### *Color the world by running*
+### _Color the world by running_
 
 Een gamified hardloop-app die elke race ter wereld verandert in een verzamelbaar kaart.
 Loop races, scan je fysieke kaarten en kleur jouw 3D-wereldbol race per keer.
@@ -10,7 +10,7 @@ Loop races, scan je fysieke kaarten en kleur jouw 3D-wereldbol race per keer.
 [TypeScript]
 [Supabase]
 
-Final Work Laura Ocampo 3A MCT, Web & Mobile Development Erasmushogeschool Brussel 
+Final Work Laura Ocampo 3A MCT, Web & Mobile Development Erasmushogeschool Brussel
 
 ---
 
@@ -24,13 +24,13 @@ De mascotte heet **Andro**: een kawaii-astronaut met de aarde als hoofd want wie
 
 ### Kernfuncties
 
-| Functie | Beschrijving |
-|---------|-------------|
-| **3D-wereldkaart** | Roteerbare globe die kleurt naarmate je races voltooit |
-| **Race-discovery** | Pins, filters en details voor races wereldwijd |
-| **In-app inschrijving** | Boeken en betalen rechtstreeks in de app |
-| **Card-scanning** | QR-scan met feestelijke animatie |
-| **Digitaal museum** | 3D-galerij van je collectie, bezoekbaar door anderen |
+| Functie                 | Beschrijving                                               |
+| ----------------------- | ---------------------------------------------------------- |
+| **3D-wereldkaart**      | Roteerbare globe die kleurt naarmate je races voltooit     |
+| **Race-discovery**      | Pins, filters en details voor races wereldwijd             |
+| **In-app inschrijving** | Boeken en betalen rechtstreeks in de app                   |
+| **Card-scanning**       | QR-scan met feestelijke animatie                           |
+| **Digitaal museum**     | 3D-galerij van je collectie, bezoekbaar door anderen       |
 | **Profiel & community** | Statistieken, badges en team-challenges (geen ranglijsten) |
 
 ---
@@ -38,30 +38,51 @@ De mascotte heet **Andro**: een kawaii-astronaut met de aarde als hoofd want wie
 ## Tech stack
 
 ### Frontend
+
 - **[React Native](https://reactnative.dev)** cross-platform native apps (iOS + Android) vanuit codebase
 - **[Expo](https://expo.dev)** development tooling, build- en update-infrastructuur
 - **[TypeScript](https://www.typescriptlang.org)** statisch getypeerde JavaScript
 - **[Expo Router](https://docs.expo.dev/router/introduction/)** file-based routing en navigatie
 
 ### State & opslag
+
 - **[Zustand](https://zustand-demo.pmnd.rs/)** lichte state management
 - **[AsyncStorage](https://react-native-async-storage.github.io/async-storage/)** lokale persistente opslag
 
 ### Backend
+
 - **[Supabase](https://supabase.com)** PostgreSQL-database, authenticatie, storage en realtime API
   - Row Level Security (RLS) voor privacy en toegangscontrole per rij
 
 ### UI & media
+
 - **[Lucide React Native](https://lucide.dev)** iconenset
 - **[expo-camera](https://docs.expo.dev/versions/latest/sdk/camera/)** QR-code scanner voor verzamelkaarten
 - **[expo-location](https://docs.expo.dev/versions/latest/sdk/location/)** GPS voor race-suggesties en Travel Mode
 - **[expo-linear-gradient](https://docs.expo.dev/versions/latest/sdk/linear-gradient/)** cosmische achtergronden
 - **[expo-image](https://docs.expo.dev/versions/latest/sdk/image/)** performante afbeeldingen en GIF-animaties
+- **[expo-sharing](https://docs.expo.dev/versions/latest/sdk/sharing/)**
+
+### 3D Globe
+
+- **[Three.js Documentation](https://threejs.org/docs/)** Core 3D library gebruikt voor de interactive globe.
+- **[@react-three/fiber](https://r3f.docs.pmnd.rs/getting-started/introduction)** React-renderer voor Three.js.
+- **[Natural Earth Data](https://www.naturalearthdata.com/)** Open-source GeoJSON-dataset met landsgrenzen die wordt gebruikt voor het weergeven van de wereldbol.
+- **[earcut](https://github.com/mapbox/earcut)** Polygon-triangulatiebibliotheek die wordt gebruikt om GeoJSON-polygonen om te zetten in driehoeken voor 3D-weergave.
+
+### Animaties
+
+- **[React Native Reanimated 3](https://docs.swmansion.com/react-native-reanimated/)** Gebruikt voor de kaartomdraai-animatie, de pop-up bij het vrijspelen van een continent en de rotatie van de wereldbol.
+- **[React Native Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler/)** Gebruikt voor pinch-to-zoom- en pan-gebaren op racekaarten.
 
 ### AI-assets (buiten de codebase)
+
 - **Gemini Pro** generatie van kaartartwork en mascot-frames
 - **Veo 3** animaties van Andro (green-screen workflow)
 - **Photoshop / Capcut** post-productie en green-screen removal
+
+### AI Tools Used
+- **[Claude Anthropic](https://claude.ai/chat/a0092a98-8a70-49d1-9bf2-fef493cb111f)** Debugging van probleem in community.tsx.
 
 ---
 
@@ -138,12 +159,12 @@ andro/
 
 Meest belangrijke tabellen:
 
-| Tabel | Beschrijving |
-|-------|-------------|
-| `profiles` | Gebruikersprofielen, instellingen, privacy |
-| `races` | Racegegevens: type, afstand, locatie, datum, prijs |
-| `cards` | Verzamelkaarten: artwork, zeldzaamheid, QR-code |
-| `user_cards` | Koppeltabel: welke gebruiker welke kaart scande |
+| Tabel        | Beschrijving                                       |
+| ------------ | -------------------------------------------------- |
+| `profiles`   | Gebruikersprofielen, instellingen, privacy         |
+| `races`      | Racegegevens: type, afstand, locatie, datum, prijs |
+| `cards`      | Verzamelkaarten: artwork, zeldzaamheid, QR-code    |
+| `user_cards` | Koppeltabel: welke gebruiker welke kaart scande    |
 
 ---
 
@@ -163,7 +184,7 @@ Alle deliverables zitten in de bronbestanden van het Final Work.
 **Laura Ocampo**
 3A Multimedia & Creative Technology
 Web & Mobile Development
-Erasmushogeschool Brussel 
+Erasmushogeschool Brussel
 Begeleider: Kobe Vermeire
 
 ---
