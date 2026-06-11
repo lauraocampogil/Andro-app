@@ -80,8 +80,15 @@ De mascotte heet **Andro**: een kawaii-astronaut met de aarde als hoofd want wie
 - **Gemini Pro** generatie van kaartartwork en mascot-frames
 - **Veo 3** animaties van Andro (green-screen workflow)
 - **Photoshop / Capcut** post-productie en green-screen removal
+  **(https://gemini.google.com/app/fc71d4d2b632cc80)**
+  **(https://gemini.google.com/app/e933802e62a0aeae)**
+  **(https://gemini.google.com/app/1a625970be373791)**
+  **(https://gemini.google.com/app/1cb227533ee8be64)**
+  **(https://gemini.google.com/app/f1083294a56fe694)**
+  **(https://gemini.google.com/app/714929b1c55d14ab)**
 
 ### AI Tools Used
+
 - **[Claude Anthropic](https://claude.ai/chat/a0092a98-8a70-49d1-9bf2-fef493cb111f)** Debugging van probleem in community.tsx.
 
 ---
